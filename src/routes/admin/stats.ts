@@ -4,6 +4,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '@/types';
+import { syncModelPricing } from '@/services/sync/price-sync';
 
 const stats = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -240,6 +241,270 @@ stats.get('/date-range', async (c) => {
   } catch (err) {
     console.error('Failed to get date range stats:', err);
     return c.json({ code: 500, message: '獲取統計失敗' }, 500);
+  }
+});
+
+/**
+ * GET /api/v1/admin/stats/today
+ * 獲取今日統計
+ */
+stats.get('/today', async (c) => {
+  try {
+    const todayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+
+    const result = await c.env.DB.prepare(
+      `SELECT
+        COUNT(*) as total_requests,
+        SUM(CASE WHEN error IS NULL OR error = '' THEN 1 ELSE 0 END) as success_requests,
+        SUM(CASE WHEN error IS NOT NULL AND error != '' THEN 1 ELSE 0 END) as failed_requests,
+        SUM(input_tokens) as total_input_tokens,
+        SUM(output_tokens) as total_output_tokens,
+        SUM(cost) as total_cost,
+        AVG(use_time) as avg_use_time
+      FROM relay_logs
+      WHERE time >= ?`
+    )
+      .bind(todayStart)
+      .first<{
+        total_requests: number;
+        success_requests: number;
+        failed_requests: number;
+        total_input_tokens: number;
+        total_output_tokens: number;
+        total_cost: number;
+        avg_use_time: number;
+      }>();
+
+    return c.json({
+      code: 200,
+      data: {
+        todayStart,
+        totalRequests: result?.total_requests ?? 0,
+        successRequests: result?.success_requests ?? 0,
+        failedRequests: result?.failed_requests ?? 0,
+        totalInputTokens: result?.total_input_tokens ?? 0,
+        totalOutputTokens: result?.total_output_tokens ?? 0,
+        totalCost: result?.total_cost ?? 0,
+        avgUseTime: Math.round(result?.avg_use_time ?? 0),
+      },
+    });
+  } catch (err) {
+    console.error('Failed to get today stats:', err);
+    return c.json({ code: 500, message: 'Failed to get today stats' }, 500);
+  }
+});
+
+/**
+ * GET /api/v1/admin/stats/hourly
+ * 獲取今日每小時統計
+ */
+stats.get('/hourly', async (c) => {
+  try {
+    const todayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+
+    const result = await c.env.DB.prepare(
+      `SELECT
+        CAST((time - ?) / 3600 AS INTEGER) as hour,
+        COUNT(*) as total_requests,
+        SUM(CASE WHEN error IS NULL OR error = '' THEN 1 ELSE 0 END) as success_requests,
+        SUM(CASE WHEN error IS NOT NULL AND error != '' THEN 1 ELSE 0 END) as failed_requests,
+        SUM(input_tokens) as total_input_tokens,
+        SUM(output_tokens) as total_output_tokens,
+        SUM(cost) as total_cost
+      FROM relay_logs
+      WHERE time >= ?
+      GROUP BY hour
+      ORDER BY hour ASC`
+    )
+      .bind(todayStart, todayStart)
+      .all<{
+        hour: number;
+        total_requests: number;
+        success_requests: number;
+        failed_requests: number;
+        total_input_tokens: number;
+        total_output_tokens: number;
+        total_cost: number;
+      }>();
+
+    // Build 24 hourly slots, filling missing hours with zeros
+    const hourlyMap = new Map(
+      (result.results ?? []).map((r) => [r.hour, r])
+    );
+
+    const hourly = Array.from({ length: 24 }, (_, i) => {
+      const row = hourlyMap.get(i);
+      return {
+        hour: i,
+        totalRequests: row?.total_requests ?? 0,
+        successRequests: row?.success_requests ?? 0,
+        failedRequests: row?.failed_requests ?? 0,
+        totalInputTokens: row?.total_input_tokens ?? 0,
+        totalOutputTokens: row?.total_output_tokens ?? 0,
+        totalCost: row?.total_cost ?? 0,
+      };
+    });
+
+    return c.json({ code: 200, data: hourly });
+  } catch (err) {
+    console.error('Failed to get hourly stats:', err);
+    return c.json({ code: 500, message: 'Failed to get hourly stats' }, 500);
+  }
+});
+
+/**
+ * GET /api/v1/admin/stats/channels
+ * 獲取每個 channel 的統計
+ */
+stats.get('/channels', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT
+        channel_id,
+        channel_name,
+        COUNT(*) as total_requests,
+        SUM(CASE WHEN error IS NULL OR error = '' THEN 1 ELSE 0 END) as success_requests,
+        SUM(CASE WHEN error IS NOT NULL AND error != '' THEN 1 ELSE 0 END) as failed_requests,
+        SUM(input_tokens) as total_input_tokens,
+        SUM(output_tokens) as total_output_tokens,
+        SUM(cost) as total_cost,
+        AVG(use_time) as avg_use_time
+      FROM relay_logs
+      WHERE channel_id IS NOT NULL
+      GROUP BY channel_id
+      ORDER BY total_requests DESC`
+    )
+      .all<{
+        channel_id: number;
+        channel_name: string;
+        total_requests: number;
+        success_requests: number;
+        failed_requests: number;
+        total_input_tokens: number;
+        total_output_tokens: number;
+        total_cost: number;
+        avg_use_time: number;
+      }>();
+
+    const channels = (result.results ?? []).map((row) => ({
+      channelId: row.channel_id,
+      channelName: row.channel_name,
+      totalRequests: row.total_requests,
+      successRequests: row.success_requests,
+      failedRequests: row.failed_requests,
+      totalInputTokens: row.total_input_tokens,
+      totalOutputTokens: row.total_output_tokens,
+      totalCost: row.total_cost,
+      avgUseTime: Math.round(row.avg_use_time ?? 0),
+    }));
+
+    return c.json({ code: 200, data: channels });
+  } catch (err) {
+    console.error('Failed to get channel stats:', err);
+    return c.json({ code: 500, message: 'Failed to get channel stats' }, 500);
+  }
+});
+
+/**
+ * GET /api/v1/admin/stats/apikeys
+ * 獲取每個 API Key 的統計 (from stats_apikey table)
+ */
+stats.get('/apikeys', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT
+        sa.api_key_id,
+        ak.name as api_key_name,
+        sa.input_token,
+        sa.output_token,
+        sa.input_cost,
+        sa.output_cost,
+        sa.wait_time,
+        sa.request_success,
+        sa.request_failed
+      FROM stats_apikey sa
+      LEFT JOIN api_keys ak ON ak.id = sa.api_key_id
+      ORDER BY sa.request_success + sa.request_failed DESC`
+    )
+      .all<{
+        api_key_id: number;
+        api_key_name: string | null;
+        input_token: number;
+        output_token: number;
+        input_cost: number;
+        output_cost: number;
+        wait_time: number;
+        request_success: number;
+        request_failed: number;
+      }>();
+
+    const apikeys = (result.results ?? []).map((row) => ({
+      apiKeyId: row.api_key_id,
+      apiKeyName: row.api_key_name,
+      inputToken: row.input_token,
+      outputToken: row.output_token,
+      inputCost: row.input_cost,
+      outputCost: row.output_cost,
+      waitTime: row.wait_time,
+      requestSuccess: row.request_success,
+      requestFailed: row.request_failed,
+    }));
+
+    return c.json({ code: 200, data: apikeys });
+  } catch (err) {
+    console.error('Failed to get API key stats:', err);
+    return c.json({ code: 500, message: 'Failed to get API key stats' }, 500);
+  }
+});
+
+/**
+ * POST /api/v1/admin/stats/price-sync
+ * 手動觸發價格同步
+ */
+stats.post('/price-sync', async (c) => {
+  try {
+    const count = await syncModelPricing(c.env);
+    return c.json({
+      code: 200,
+      message: `Price sync completed, ${count} models updated`,
+    });
+  } catch (err) {
+    console.error('Failed to sync model pricing:', err);
+    return c.json({ code: 500, message: 'Failed to sync model pricing' }, 500);
+  }
+});
+
+/**
+ * GET /api/v1/admin/stats/model-list
+ * 獲取所有模型價格列表
+ */
+stats.get('/model-list', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT name, input, output, cache_read, cache_write
+       FROM llm_infos
+       ORDER BY name ASC`
+    )
+      .all<{
+        name: string;
+        input: number;
+        output: number;
+        cache_read: number;
+        cache_write: number;
+      }>();
+
+    const models = (result.results ?? []).map((row) => ({
+      name: row.name,
+      input: row.input,
+      output: row.output,
+      cacheRead: row.cache_read,
+      cacheWrite: row.cache_write,
+    }));
+
+    return c.json({ code: 200, data: models });
+  } catch (err) {
+    console.error('Failed to get model list:', err);
+    return c.json({ code: 500, message: 'Failed to get model list' }, 500);
   }
 });
 

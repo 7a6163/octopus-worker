@@ -50,6 +50,8 @@ import { OpenAIChatOutbound } from './outbound/openai-chat';
 import { AnthropicOutbound } from './outbound/anthropic';
 import { OpenAIEmbeddingOutbound } from './outbound/openai-embedding';
 import { OpenAIResponseOutbound } from './outbound/openai-response';
+import { GeminiOutbound } from './outbound/gemini';
+import { VolcengineOutbound } from './outbound/volcengine';
 import { OpenAIChatInbound } from './inbound/openai-chat';
 import { AnthropicInbound } from './inbound/anthropic';
 import { OpenAIEmbeddingInbound } from './inbound/openai-embedding';
@@ -58,6 +60,8 @@ import { OpenAIResponseInbound } from './inbound/openai-response';
 registerOutbound(0, () => new OpenAIChatOutbound());       // OutboundType.OpenAIChat
 registerOutbound(1, () => new OpenAIResponseOutbound());   // OutboundType.OpenAIResponse
 registerOutbound(2, () => new AnthropicOutbound());        // OutboundType.Anthropic
+registerOutbound(3, () => new GeminiOutbound());           // OutboundType.Gemini
+registerOutbound(4, () => new VolcengineOutbound());       // OutboundType.Volcengine
 registerOutbound(5, () => new OpenAIEmbeddingOutbound());  // OutboundType.OpenAIEmbedding
 registerInbound('openai-chat', () => new OpenAIChatInbound());
 registerInbound('openai-response', () => new OpenAIResponseInbound());

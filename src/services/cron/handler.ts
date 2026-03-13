@@ -9,6 +9,8 @@
 
 import type { Bindings } from '@/types';
 import { cleanupOldLogs } from '@/services/log/relay-log';
+import { syncModelPricing } from '@/services/sync/price-sync';
+import { syncChannelModels } from '@/services/sync/channel-sync';
 
 /**
  * 處理定時任務
@@ -27,9 +29,9 @@ export async function handleScheduled(
       await persistStats(env);
     }
 
-    // 每小時：同步模型價格
+    // 每小時：同步模型價格 + 渠道模型同步
     if (cron === '0 * * * *') {
-      await syncModelPricing(env);
+      await runHourlySync(env);
     }
 
     // 每天：清理過期日誌
@@ -65,15 +67,21 @@ async function persistStats(env: Bindings): Promise<void> {
 }
 
 /**
- * 同步模型價格
+ * Hourly sync: model pricing + channel models
  */
-async function syncModelPricing(_env: Bindings): Promise<void> {
+async function runHourlySync(env: Bindings): Promise<void> {
   try {
-    // TODO: 從外部 API 獲取最新價格並更新到 llm_infos 表
-    // 目前只記錄日誌
-    console.log('Model pricing sync triggered (not implemented yet)');
+    const count = await syncModelPricing(env);
+    console.log(`Model pricing sync completed: ${count} models`);
   } catch (err) {
     console.error('Failed to sync model pricing:', err);
+  }
+
+  try {
+    await syncChannelModels(env);
+    console.log('Channel model sync completed');
+  } catch (err) {
+    console.error('Failed to sync channel models:', err);
   }
 }
 

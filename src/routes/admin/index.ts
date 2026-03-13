@@ -11,6 +11,7 @@ import groupRoutes from './groups';
 import apikeyRoutes from './apikeys';
 import userRoutes from './users';
 import statsRoutes from './stats';
+import settingsRoutes from './settings';
 
 const admin = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -41,8 +42,6 @@ admin.route('/groups', groupRoutes);
 admin.route('/apikeys', apikeyRoutes);
 admin.route('/users', userRoutes);
 admin.route('/stats', statsRoutes);
-
-// TODO: Settings 路由
-// admin.route('/settings', settingsRoutes);
+admin.route('/settings', settingsRoutes);
 
 export default admin;

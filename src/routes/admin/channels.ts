@@ -14,6 +14,7 @@ import {
   deleteChannel,
 } from '@/services/db/channel';
 import { invalidateChannelCache } from '@/services/cache/channel';
+import { fetchModelsFromUpstream, syncChannelModels } from '@/services/sync/channel-sync';
 
 const channels = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -175,6 +176,44 @@ channels.delete('/:id', async (c) => {
   } catch (err) {
     console.error('Failed to delete channel:', err);
     return c.json({ code: 500, message: '刪除 channel 失敗' }, 500);
+  }
+});
+
+/**
+ * POST /api/v1/admin/channels/fetch-model
+ * 測試從上游獲取模型列表
+ */
+channels.post('/fetch-model', async (c) => {
+  try {
+    const body = await c.req.json<{ type: number; base_url: string; key: string }>();
+
+    if (body.base_url === undefined || body.key === undefined || body.type === undefined) {
+      return c.json({ code: 400, message: 'type, base_url, and key are required' }, 400);
+    }
+
+    const models = await fetchModelsFromUpstream(body.base_url, body.key, body.type, []);
+    return c.json({
+      code: 200,
+      data: { models: [...models] },
+    });
+  } catch (err) {
+    console.error('Failed to fetch models from upstream:', err);
+    const message = err instanceof Error ? err.message : 'Failed to fetch models';
+    return c.json({ code: 500, message }, 500);
+  }
+});
+
+/**
+ * POST /api/v1/admin/channels/sync
+ * 手動觸發 channel 模型同步
+ */
+channels.post('/sync', async (c) => {
+  try {
+    await syncChannelModels(c.env);
+    return c.json({ code: 200, message: 'sync triggered' });
+  } catch (err) {
+    console.error('Failed to sync channel models:', err);
+    return c.json({ code: 500, message: 'Failed to sync channel models' }, 500);
   }
 });
 
