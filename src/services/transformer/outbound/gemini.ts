@@ -119,14 +119,14 @@ export class GeminiOutbound implements OutboundTransformer {
       ? 'streamGenerateContent'
       : 'generateContent';
     const streamParam = request.stream ? '?alt=sse' : '';
-    const separator = cleanBase.includes('?') ? '&' : '?';
-    const urlStr = `${cleanBase}/models/${modelName}:${method}${streamParam}${streamParam ? '&' : separator}key=${key}`;
+    const urlStr = `${cleanBase}/models/${modelName}:${method}${streamParam}`;
 
     return new Request(urlStr, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': request.stream ? 'text/event-stream' : 'application/json',
+        'X-Goog-Api-Key': key,
       },
       body: JSON.stringify(geminiReq),
     });

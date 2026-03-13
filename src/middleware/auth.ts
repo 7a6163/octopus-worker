@@ -122,7 +122,10 @@ export const jwtAuth = () => {
       // 驗證 JWT
       try {
         const { verifyJWT } = await import('@/services/auth/jwt');
-        const jwtSecret = c.env.JWT_SECRET || 'default-secret-change-me';
+        const jwtSecret = c.env.JWT_SECRET;
+        if (!jwtSecret) {
+          return c.json({ code: 500, message: 'Server misconfiguration: JWT_SECRET not set' }, 500);
+        }
         const payload = await verifyJWT(token, jwtSecret);
 
         // 設定上下文

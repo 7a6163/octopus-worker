@@ -191,6 +191,30 @@ channels.post('/fetch-model', async (c) => {
       return c.json({ code: 400, message: 'type, base_url, and key are required' }, 400);
     }
 
+    // SSRF protection: only allow http/https and reject private/loopback addresses
+    try {
+      const parsed = new URL(body.base_url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return c.json({ code: 400, message: 'Only http/https URLs are allowed' }, 400);
+      }
+      const host = parsed.hostname.toLowerCase();
+      if (
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '::1' ||
+        host === '0.0.0.0' ||
+        host.startsWith('10.') ||
+        host.startsWith('172.') ||
+        host.startsWith('192.168.') ||
+        host.endsWith('.internal') ||
+        host.endsWith('.local')
+      ) {
+        return c.json({ code: 400, message: 'Private/internal URLs are not allowed' }, 400);
+      }
+    } catch {
+      return c.json({ code: 400, message: 'Invalid URL' }, 400);
+    }
+
     const models = await fetchModelsFromUpstream(body.base_url, body.key, body.type, []);
     return c.json({
       code: 200,

@@ -15,7 +15,7 @@ import type { Bindings, Variables } from '@/types';
 import type { InternalLLMRequest } from '@/types/llm';
 import type { Channel, ChannelKey, BaseUrl } from '@/types/channel';
 import { getInboundTransformer, getOutboundTransformer } from '@/services/transformer';
-import type { InboundType } from '@/services/transformer/interface';
+import type { InboundType, InboundTransformer, OutboundTransformer } from '@/services/transformer/interface';
 import { getCachedGroupByModel } from '@/services/cache/group';
 import { getCachedChannel } from '@/services/cache/channel';
 import { updateChannelKeyStatus } from '@/services/db/channel';
@@ -77,7 +77,7 @@ export async function relayHandler(
   // 3. 檢查 API Key 支援的模型（TODO: Phase 2 從 DB 讀取）
   const supportedModels = c.get('supportedModels');
   if (supportedModels) {
-    const models = supportedModels.split(',');
+    const models = supportedModels.split(',').map((m) => m.trim());
     if (!models.includes(internalRequest.model)) {
       return c.json(
         {
@@ -177,8 +177,8 @@ export async function relayHandler(
           `attempt=${i + 1}/${itemCount}`
       );
 
-      // 設定實際模型名稱
-      internalRequest.model = item.modelName;
+      // 建立帶有實際模型名稱的請求副本（不 mutate 原始物件）
+      const requestForChannel = { ...internalRequest, model: item.modelName };
 
       try {
         // 轉發請求
@@ -186,7 +186,7 @@ export async function relayHandler(
           c,
           inAdapter,
           outAdapter,
-          internalRequest,
+          requestForChannel,
           channel,
           usedKey,
           group.firstTokenTimeOut
@@ -219,7 +219,7 @@ export async function relayHandler(
                 channelId: channel.id,
                 channelName: channel.name,
                 channelKeyId: usedKey.id,
-                requestModelName: internalRequest.model,
+                requestModelName: requestForChannel.model,
                 success: true,
                 waitTime: attemptDuration,
                 tokenUsage: result.tokenUsage,
@@ -269,7 +269,7 @@ export async function relayHandler(
         channelId: 0,
         channelName: 'unknown',
         channelKeyId: 0,
-        requestModelName: internalRequest.model,
+        requestModelName: requestModel,
         success: false,
         waitTime: 0,
         errorMessage,
@@ -302,8 +302,8 @@ interface TokenUsage {
  */
 async function forwardRequest(
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
-  inAdapter: any,
-  outAdapter: any,
+  inAdapter: InboundTransformer,
+  outAdapter: OutboundTransformer,
   internalRequest: InternalLLMRequest,
   channel: Channel,
   usedKey: ChannelKey,
@@ -361,8 +361,8 @@ async function forwardRequest(
 async function handleStreamResponse(
   _c: Context<{ Bindings: Bindings; Variables: Variables }>,
   response: Response,
-  inAdapter: any,
-  outAdapter: any,
+  inAdapter: InboundTransformer,
+  outAdapter: OutboundTransformer,
   firstTokenTimeOutSec: number
 ): Promise<{ success: boolean; response?: Response; statusCode?: number; error?: Error; tokenUsage?: TokenUsage }> {
   const contentType = response.headers.get('Content-Type') || '';
@@ -481,8 +481,8 @@ async function handleStreamResponse(
 async function handleNonStreamResponse(
   _c: Context<{ Bindings: Bindings; Variables: Variables }>,
   response: Response,
-  inAdapter: any,
-  outAdapter: any
+  inAdapter: InboundTransformer,
+  outAdapter: OutboundTransformer
 ): Promise<{ success: boolean; response?: Response; statusCode?: number; error?: Error; tokenUsage?: TokenUsage }> {
   try {
     // 轉換回應：上游 → 內部 → 客戶端
@@ -491,18 +491,13 @@ async function handleNonStreamResponse(
 
     // 提取 token 使用量
     let tokenUsage: TokenUsage | undefined;
-    try {
-      const responseData = JSON.parse(internalResponse);
-      if (responseData.usage) {
-        tokenUsage = {
-          promptTokens: responseData.usage.prompt_tokens || 0,
-          completionTokens: responseData.usage.completion_tokens || 0,
-          cacheReadTokens: responseData.usage.cache_read_input_tokens || 0,
-          cacheCreationTokens: responseData.usage.cache_creation_input_tokens || 0,
-        };
-      }
-    } catch (parseErr) {
-      // 無法解析 token 使用量，跳過
+    if (internalResponse.usage) {
+      tokenUsage = {
+        promptTokens: internalResponse.usage.promptTokens || 0,
+        completionTokens: internalResponse.usage.completionTokens || 0,
+        cacheReadTokens: internalResponse.usage.cacheReadInputTokens || 0,
+        cacheCreationTokens: internalResponse.usage.cacheCreationInputTokens || 0,
+      };
     }
 
     return {

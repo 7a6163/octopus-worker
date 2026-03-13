@@ -48,7 +48,10 @@ auth.post('/login', async (c) => {
     }
 
     // 簽發 JWT
-    const jwtSecret = c.env.JWT_SECRET || 'default-secret-change-me';
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return c.json({ code: 500, message: 'Server misconfiguration' }, 500);
+    }
     const token = await signJWT(
       {
         userId: user.id,
@@ -78,7 +81,7 @@ auth.post('/login', async (c) => {
     return c.json(
       {
         code: 500,
-        message: '登入失敗：' + (err as Error).message,
+        message: 'Internal server error',
       },
       500
     );
@@ -117,7 +120,10 @@ auth.post('/refresh', async (c) => {
       );
     }
 
-    const jwtSecret = c.env.JWT_SECRET || 'default-secret-change-me';
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return c.json({ code: 500, message: 'Server misconfiguration' }, 500);
+    }
     const result = await refreshToken(oldToken, {
       secret: jwtSecret,
       expiresIn: 86400,
@@ -162,7 +168,10 @@ auth.get('/me', async (c) => {
     }
 
     // 驗證 JWT
-    const jwtSecret = c.env.JWT_SECRET || 'default-secret-change-me';
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return c.json({ code: 500, message: 'Server misconfiguration' }, 500);
+    }
     const payload = await verifyJWT(token, jwtSecret);
 
     // 從資料庫獲取最新的使用者資訊
