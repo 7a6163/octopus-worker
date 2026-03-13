@@ -1,103 +1,108 @@
 # Octopus Workers
 
-Octopus LLM API 聚合服務的 Cloudflare Workers 版本。
+LLM API aggregation and load balancing service running on Cloudflare Workers. Acts as a reverse proxy that accepts requests in OpenAI/Anthropic formats, routes them through configurable channels (upstream LLM providers), and returns responses in the client's expected format.
 
-## 快速開始
+## Quick Start
 
-### 1. 安裝依賴
+### 1. Install Dependencies
 
 ```bash
 npm install
-# 或
-pnpm install
 ```
 
-### 2. 建立 D1 資料庫
+### 2. Create D1 Database
 
 ```bash
 wrangler d1 create octopus-db
 ```
 
-將返回的 `database_id` 填入 `wrangler.toml` 的 `database_id` 欄位。
+Copy the returned `database_id` into `wrangler.toml`.
 
-### 3. 建立 KV Namespace
+### 3. Create KV Namespace
 
 ```bash
 wrangler kv:namespace create CACHE
 ```
 
-將返回的 `id` 填入 `wrangler.toml` 的 KV `id` 欄位。
+Copy the returned `id` into the KV `id` field in `wrangler.toml`.
 
-### 4. 執行資料庫遷移
+### 4. Run Database Migrations
 
 ```bash
+# Local
 wrangler d1 migrations apply octopus-db --local
+
+# Remote
 wrangler d1 migrations apply octopus-db --remote
 ```
 
-### 5. 本地開發
+### 5. Set Secrets
+
+```bash
+wrangler secret put JWT_SECRET
+```
+
+For local dev, create a `.dev.vars` file (not committed to git):
+
+```
+JWT_SECRET=your-secret-key
+```
+
+### 6. Local Development
 
 ```bash
 npm run dev
 ```
 
-訪問 http://localhost:8787
+Server runs at http://localhost:8787
 
-### 6. 部署
+### 7. Deploy
 
 ```bash
 npm run deploy
 ```
 
-## 專案結構
+## Architecture
+
+### Request Flow
 
 ```
-octopus-workers/
-├── src/
-│   ├── index.ts              # Worker 入口
-│   ├── routes/               # API 路由
-│   ├── services/             # 業務邏輯
-│   ├── db/                   # 資料庫操作
-│   ├── middleware/           # 中間件
-│   ├── types/                # TypeScript 類型
-│   └── utils/                # 工具函數
-├── migrations/               # D1 遷移檔案
-├── tests/                    # 測試
-├── wrangler.toml             # Workers 配置
-└── package.json
+Client → Inbound Transformer → Internal Format → Group/Channel Selection
+→ Load Balancer → Outbound Transformer → Upstream LLM API → Response back through pipeline
 ```
 
-## 開發指令
+### Data Layer
 
-- `npm run dev` - 本地開發
-- `npm run deploy` - 部署到 Cloudflare
-- `npm run test` - 執行測試
-- `npm run test:watch` - 監聽模式測試
-- `npm run test:coverage` - 測試覆蓋率
-- `npm run tail` - 查看線上日誌
+- **D1** — Primary database (SQLite)
+- **Workers KV** — Configuration cache
+- **Durable Objects** — Stats aggregation, distributed round-robin counter
 
-## 環境變數
+### API Endpoints
 
-在 `.dev.vars` 檔案中設定本地環境變數（不會提交到 Git）：
+- `/v1/*` — LLM relay endpoints (OpenAI / Anthropic compatible)
+- `/api/v1/*` — Admin API (JWT-authenticated)
 
-```
-# 範例
-JWT_SECRET=your-secret-key
-```
+### Supported Formats
 
-## 架構
+| Format | Inbound | Outbound |
+|--------|---------|----------|
+| OpenAI Chat Completions | Yes | Yes |
+| OpenAI Responses API | Yes | Yes |
+| OpenAI Embeddings | Yes | Yes |
+| Anthropic Messages | Yes | Yes |
 
-### 資料層
-- **D1**: 主資料庫（SQLite）
-- **Workers KV**: 配置快取
-- **Durable Objects**: 統計聚合
+## Commands
 
-### API 層
-- `/v1/*` - LLM API 端點（OpenAI, Anthropic 格式）
-- `/api/v1/*` - 管理 API 端點
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Local dev server |
+| `npm run deploy` | Deploy to Cloudflare |
+| `npm run test` | Run tests |
+| `npm run typecheck` | TypeScript type checking |
+| `npm run db:migrate:dev` | Apply D1 migrations locally |
 
-## 參考文件
+## References
 
-- [Cloudflare Workers 文件](https://developers.cloudflare.com/workers/)
-- [Hono 文件](https://hono.dev/)
-- [D1 文件](https://developers.cloudflare.com/d1/)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)
+- [Hono](https://hono.dev/)
+- [D1](https://developers.cloudflare.com/d1/)
