@@ -1,0 +1,85 @@
+#:schema node_modules/wrangler/config-schema.json
+# Octopus Workers - LLM API Aggregation & Load Balancing Service
+name = "octopus-workers"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ==================== Durable Objects ====================
+[[durable_objects.bindings]]
+name = "STATS_AGGREGATOR"
+class_name = "StatsAggregator"
+script_name = "octopus-workers"
+
+[[durable_objects.bindings]]
+name = "ROUND_ROBIN_COUNTER"
+class_name = "RoundRobinCounter"
+script_name = "octopus-workers"
+
+# 註冊 Durable Objects 類別
+[[migrations]]
+tag = "v1"
+new_classes = ["StatsAggregator", "RoundRobinCounter"]
+
+# ==================== D1 Database ====================
+[[d1_databases]]
+binding = "DB"
+database_name = "octopus-db"
+database_id = ""  # 填入: wrangler d1 create octopus-db
+migrations_dir = "migrations"
+
+# ==================== Workers KV ====================
+[[kv_namespaces]]
+binding = "CACHE"
+id = ""  # 填入: wrangler kv namespace create CACHE
+
+# ==================== Environment Variables ====================
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets (使用 wrangler secret put 設定):
+# - JWT_SECRET: JWT 簽名密鑰 (必需)
+# - ADMIN_USERNAME: 初始管理員帳號 (可選)
+# - ADMIN_PASSWORD: 初始管理員密碼 (可選)
+
+# ==================== Cron Triggers ====================
+[triggers]
+crons = [
+  "*/10 * * * *",  # 每 10 分鐘：持久化統計數據
+  "0 * * * *",     # 每小時：同步模型價格
+  "0 0 * * *"      # 每天凌晨：清理過期日誌
+]
+
+# ==================== Observability ====================
+[observability]
+enabled = true
+
+# ==================== Development Environment ====================
+[env.dev]
+name = "octopus-workers-dev"
+vars = { ENVIRONMENT = "development" }
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "octopus-db-dev"
+database_id = ""  # 開發環境 database_id
+migrations_dir = "migrations"
+
+[[env.dev.kv_namespaces]]
+binding = "CACHE"
+id = ""  # 開發環境 KV namespace id
+
+# ==================== Staging Environment ====================
+[env.staging]
+name = "octopus-workers-staging"
+vars = { ENVIRONMENT = "staging" }
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "octopus-db-staging"
+database_id = ""  # Staging 環境 database_id
+migrations_dir = "migrations"
+
+[[env.staging.kv_namespaces]]
+binding = "CACHE"
+id = ""  # Staging 環境 KV namespace id

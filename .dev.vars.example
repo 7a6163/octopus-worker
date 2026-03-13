@@ -1,0 +1,35 @@
+# Development Environment Variables Template
+# =============================================
+# 1. Copy this file to .dev.vars
+# 2. Fill in your actual values
+# 3. .dev.vars is automatically loaded by `wrangler dev`
+# 4. NEVER commit .dev.vars to version control
+
+# ==================== Required Variables ====================
+
+# JWT Secret for Authentication
+# Generate a secure random string: openssl rand -base64 32
+JWT_SECRET=your-jwt-secret-change-me-use-openssl-rand
+
+# ==================== Optional Variables ====================
+
+# Environment identifier
+ENVIRONMENT=development
+
+# Initial Admin User (optional)
+# These credentials will be used to create the first admin user
+# Only needed on first run or for testing
+# ADMIN_USERNAME=admin
+# ADMIN_PASSWORD=admin123456
+
+# ==================== External API Keys (optional) ====================
+
+# If you want to test with specific upstream providers
+# OPENAI_API_KEY=sk-...
+# ANTHROPIC_API_KEY=sk-ant-...
+# GOOGLE_API_KEY=...
+
+# ==================== Notes ====================
+# - Secrets for production should be set via: wrangler secret put SECRET_NAME
+# - D1 and KV bindings are configured in wrangler.toml
+# - Durable Objects don't need additional configuration here

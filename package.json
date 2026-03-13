@@ -1,0 +1,52 @@
+{
+  "name": "octopus-workers",
+  "version": "1.0.0",
+  "description": "Octopus LLM API Aggregation on Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:remote": "wrangler dev --remote",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env dev",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy",
+    "tail": "wrangler tail",
+    "tail:dev": "wrangler tail --env dev",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types",
+    "db:create": "wrangler d1 create octopus-db",
+    "db:create:dev": "wrangler d1 create octopus-db-dev",
+    "db:migrate": "wrangler d1 migrations apply octopus-db",
+    "db:migrate:dev": "wrangler d1 migrations apply octopus-db-dev --local",
+    "db:migrate:remote": "wrangler d1 migrations apply octopus-db --remote",
+    "kv:create": "wrangler kv namespace create CACHE",
+    "kv:create:dev": "wrangler kv namespace create CACHE --env dev",
+    "secret:put": "wrangler secret put",
+    "logs": "wrangler tail --format pretty"
+  },
+  "keywords": [
+    "llm",
+    "api",
+    "cloudflare",
+    "workers",
+    "openai",
+    "anthropic"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "hono": "^4.6.14",
+    "@hono/zod-validator": "^0.4.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.96.0"
+  }
+}
