@@ -101,8 +101,6 @@ Client → Inbound Transformer → Internal Format → Group/Channel Selection
 | `npm run typecheck` | TypeScript type checking |
 | `npm run db:migrate:dev` | Apply D1 migrations locally |
 
-## References
+## Inspired By
 
-- [Cloudflare Workers](https://developers.cloudflare.com/workers/)
-- [Hono](https://hono.dev/)
-- [D1](https://developers.cloudflare.com/d1/)
+[Octopus](https://github.com/bestruirui/octopus/) — the original Go implementation.
