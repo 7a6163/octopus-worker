@@ -248,6 +248,27 @@ curl -X POST http://localhost:8787/api/v1/stats/price-sync \
   -H "Authorization: Bearer <jwt-token>"
 ```
 
+### Rate Limiting
+
+Built-in rate limiting protects against abuse using a KV-based sliding window counter.
+
+**Login endpoint** — 20 requests per minute per IP address. Applied only to `POST /api/v1/auth/login` to prevent brute-force attacks. Other auth endpoints (refresh, me) are not rate-limited.
+
+**Relay endpoints** — 600 requests per minute per API key. Applied to all `/v1/*` relay endpoints after API key authentication.
+
+When the limit is exceeded, the API returns `429 Too Many Requests`:
+
+```json
+{
+  "error": {
+    "message": "Rate limit exceeded. Please retry later.",
+    "type": "rate_limit_error"
+  }
+}
+```
+
+Rate limiting is best-effort — KV is eventually consistent on Cloudflare Workers, so brief bursts slightly above the limit may pass through. This is acceptable for abuse prevention. If KV is unreachable, requests are allowed through (fail-open) to avoid blocking legitimate traffic.
+
 ## Architecture
 
 ### Request Flow
