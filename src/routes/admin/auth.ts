@@ -141,7 +141,7 @@ auth.post('/refresh', async (c) => {
     return c.json(
       {
         code: 401,
-        message: 'Token 刷新失敗：' + (err as Error).message,
+        message: 'Token refresh failed',
       },
       401
     );
@@ -201,7 +201,7 @@ auth.get('/me', async (c) => {
     return c.json(
       {
         code: 401,
-        message: '認證失敗：' + (err as Error).message,
+        message: 'Authentication failed',
       },
       401
     );

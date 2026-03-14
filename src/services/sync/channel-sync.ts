@@ -6,7 +6,7 @@
  */
 
 import type { Bindings } from '@/types';
-import type { Channel, CustomHeader } from '@/types/channel';
+import type { Channel, ChannelKey, CustomHeader, BaseUrl } from '@/types/channel';
 import { OutboundType } from '@/types/channel';
 import { updateSetting } from '@/services/db/settings';
 import { autoGroupChannel } from '@/services/sync/auto-group';
@@ -314,82 +314,74 @@ function filterModelsByRegex(
  * Get all channels with auto_sync enabled (including keys and base URLs).
  */
 async function getAutoSyncChannels(db: D1Database): Promise<readonly Channel[]> {
-  const channelsResult = await db
-    .prepare(
+  // Batch: fetch channels and all their keys in two queries (no N+1)
+  const batchResults = await db.batch([
+    db.prepare(
       `SELECT id, name, type, enabled, base_urls, model, custom_model,
               proxy, auto_sync, auto_group, custom_header, match_regex
        FROM channels
        WHERE auto_sync = 1 AND enabled = 1
        ORDER BY id ASC`
-    )
-    .all<{
-      id: number;
-      name: string;
-      type: number;
-      enabled: number;
-      base_urls: string;
-      model: string;
-      custom_model: string;
-      proxy: number;
-      auto_sync: number;
-      auto_group: number;
-      custom_header: string;
-      match_regex: string | null;
-    }>();
+    ),
+    db.prepare(
+      `SELECT id, channel_id, enabled, channel_key, status_code,
+              last_use_timestamp, total_cost, remark
+       FROM channel_keys
+       WHERE enabled = 1
+         AND channel_id IN (SELECT id FROM channels WHERE auto_sync = 1 AND enabled = 1)
+       ORDER BY channel_id ASC, total_cost ASC`
+    ),
+  ]);
+  const channelsResult = batchResults[0];
+  const keysResult = batchResults[1];
+
+  // Group keys by channel_id, keep only the first (lowest cost) per channel
+  const keysByChannel = new Map<number, ChannelKey>();
+  for (const row of (keysResult?.results ?? []) as any[]) {
+    if (!keysByChannel.has(row.channel_id)) {
+      keysByChannel.set(row.channel_id, {
+        id: row.id,
+        channelId: row.channel_id,
+        enabled: row.enabled === 1,
+        channelKey: row.channel_key,
+        statusCode: row.status_code,
+        lastUseTimeStamp: row.last_use_timestamp,
+        totalCost: row.total_cost,
+        remark: row.remark,
+      });
+    }
+  }
 
   const channels: Channel[] = [];
+  for (const ch of (channelsResult?.results ?? []) as any[]) {
+    let baseUrls: BaseUrl[];
+    let customHeader: CustomHeader[];
+    try {
+      baseUrls = JSON.parse(ch.base_urls);
+    } catch {
+      console.error(`Channel ${ch.id} has invalid base_urls JSON, skipping`);
+      continue;
+    }
+    try {
+      customHeader = JSON.parse(ch.custom_header);
+    } catch {
+      customHeader = [];
+    }
 
-  for (const ch of channelsResult.results ?? []) {
-    // Fetch first enabled key for this channel
-    const keyResult = await db
-      .prepare(
-        `SELECT id, channel_id, enabled, channel_key, status_code,
-                last_use_timestamp, total_cost, remark
-         FROM channel_keys
-         WHERE channel_id = ? AND enabled = 1
-         ORDER BY total_cost ASC
-         LIMIT 1`
-      )
-      .bind(ch.id)
-      .first<{
-        id: number;
-        channel_id: number;
-        enabled: number;
-        channel_key: string;
-        status_code: number;
-        last_use_timestamp: number;
-        total_cost: number;
-        remark: string;
-      }>();
-
-    const keys = keyResult
-      ? [
-          {
-            id: keyResult.id,
-            channelId: keyResult.channel_id,
-            enabled: keyResult.enabled === 1,
-            channelKey: keyResult.channel_key,
-            statusCode: keyResult.status_code,
-            lastUseTimeStamp: keyResult.last_use_timestamp,
-            totalCost: keyResult.total_cost,
-            remark: keyResult.remark,
-          },
-        ]
-      : [];
-
+    const key = keysByChannel.get(ch.id);
     channels.push({
       id: ch.id,
       name: ch.name,
       type: ch.type,
       enabled: ch.enabled === 1,
-      baseUrls: JSON.parse(ch.base_urls),
-      keys,
+      baseUrls,
+      keys: key ? [key] : [],
       model: ch.model,
       customModel: ch.custom_model,
       proxy: ch.proxy === 1,
       autoSync: ch.auto_sync === 1,
       autoGroup: ch.auto_group,
-      customHeader: JSON.parse(ch.custom_header),
+      customHeader,
       matchRegex: ch.match_regex ?? undefined,
     });
   }

@@ -377,84 +377,88 @@ async function handleStreamResponse(
     };
   }
 
-  // 建立 TransformStream 處理 SSE
-  let firstToken = true;
-  let firstTokenTimer: ReturnType<typeof setTimeout> | null = null;
-  let timedOut = false;
-
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
+  let aborted = false;
 
-  // 設定首字超時
-  if (firstTokenTimeOutSec > 0) {
-    firstTokenTimer = setTimeout(() => {
-      timedOut = true;
-      writer.close();
-    }, firstTokenTimeOutSec * 1000);
-  }
+  // 用 Promise 等待 first token 或 timeout，解決 race condition
+  const firstTokenResult = await new Promise<{ received: boolean }>((resolve) => {
+    let resolved = false;
+    let firstToken = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-  // 處理 SSE 流
-  (async () => {
-    const reader = response.body?.getReader();
-    if (!reader) {
-      await writer.close();
-      return;
+    if (firstTokenTimeOutSec > 0) {
+      timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          aborted = true;
+          resolve({ received: false });
+          writer.close().catch(() => {});
+        }
+      }, firstTokenTimeOutSec * 1000);
     }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+    // 處理 SSE 流
+    (async () => {
+      const reader = response.body?.getReader();
+      if (!reader) {
+        await writer.close().catch(() => {});
+        if (!resolved) { resolved = true; resolve({ received: false }); }
+        return;
+      }
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done || timedOut) break;
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+      try {
+        while (!aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
             const data = line.slice(6);
+            if (!data || data.trim() === '' || data.trim() === '{}') continue;
 
-            // 跳過空資料或 ping
-            if (!data || data.trim() === '' || data.trim() === '{}') {
-              continue;
-            }
-
-            // 轉換流式資料：上游 → 內部 → 客戶端
             try {
               const internalStream = await outAdapter.transformStream(encoder.encode(data));
-
               if (!internalStream) continue;
 
               const outStream = await inAdapter.transformStream(internalStream);
               if (!outStream) continue;
 
-              // 記錄首字時間
               if (firstToken) {
                 firstToken = false;
-                if (firstTokenTimer) {
-                  clearTimeout(firstTokenTimer);
-                  firstTokenTimer = null;
-                }
+                if (timer) { clearTimeout(timer); timer = null; }
+                if (!resolved) { resolved = true; resolve({ received: true }); }
               }
 
-              await writer.write(outStream);
+              if (!aborted) await writer.write(outStream);
             } catch (err) {
               console.error('Stream transform error:', err);
-              // 繼續處理下一個事件
             }
           }
         }
+      } finally {
+        if (!aborted) await writer.close().catch(() => {});
+        // If no data was ever written and no timeout, resolve as success (empty stream)
+        if (!resolved) { resolved = true; resolve({ received: true }); }
       }
-    } finally {
-      await writer.close();
-    }
-  })();
+    })();
 
-  if (timedOut) {
+    // If no timeout configured, don't block — resolve immediately
+    if (firstTokenTimeOutSec <= 0 && !resolved) {
+      resolved = true;
+      resolve({ received: true });
+    }
+  });
+
+  if (!firstTokenResult.received) {
     return {
       success: false,
       error: new Error(`first token timeout (${firstTokenTimeOutSec}s)`),

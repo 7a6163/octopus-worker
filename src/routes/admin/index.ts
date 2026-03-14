@@ -5,6 +5,7 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
+import { loginRateLimit } from '@/middleware/rate-limit';
 import authRoutes from './auth';
 import channelRoutes from './channels';
 import groupRoutes from './groups';
@@ -14,6 +15,9 @@ import statsRoutes from './stats';
 import settingsRoutes from './settings';
 
 const admin = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+// Rate limiting on login endpoint only (per IP, 20 req/min)
+admin.use('/auth/login', loginRateLimit());
 
 // 認證路由（不需要 JWT）
 admin.route('/auth', authRoutes);

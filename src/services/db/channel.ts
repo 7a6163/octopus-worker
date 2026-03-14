@@ -283,6 +283,9 @@ export async function updateChannel(db: D1Database, id: number, updates: any): P
 }
 
 export async function deleteChannel(db: D1Database, id: number): Promise<void> {
-  await db.prepare('DELETE FROM channel_keys WHERE channel_id = ?').bind(id).run();
-  await db.prepare('DELETE FROM channels WHERE id = ?').bind(id).run();
+  await db.batch([
+    db.prepare('DELETE FROM group_items WHERE channel_id = ?').bind(id),
+    db.prepare('DELETE FROM channel_keys WHERE channel_id = ?').bind(id),
+    db.prepare('DELETE FROM channels WHERE id = ?').bind(id),
+  ]);
 }

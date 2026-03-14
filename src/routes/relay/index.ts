@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 import type { Bindings, Variables } from '@/types';
 import { apiKeyAuth } from '@/middleware/auth';
 import { requireJson, validateBodySize } from '@/middleware/validate';
+import { relayRateLimit } from '@/middleware/rate-limit';
 import { relayHandler } from './handler';
 
 const relay = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -21,6 +22,9 @@ const relay = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // API Key 認證
 relay.use('*', apiKeyAuth());
+
+// Rate limiting (per API key, 600 req/min) — after auth so key is always present
+relay.use('*', relayRateLimit());
 
 // 請求體大小限制（10MB）
 relay.use('*', validateBodySize(10 * 1024 * 1024));
