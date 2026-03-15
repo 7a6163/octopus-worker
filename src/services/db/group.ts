@@ -1,25 +1,25 @@
 /**
- * Group 資料操作層
- * 對應原始 Go 專案的 internal/service/group.go
+ * Group data access layer
+ * Corresponds to internal/service/group.go in the original Go project
  *
- * 功能：
- * - Group CRUD 操作
- * - GroupItem 關聯查詢
- * - 按模型名稱查詢（支援正則表達式匹配）
+ * Features:
+ * - Group CRUD operations
+ * - GroupItem association queries
+ * - Query by model name (with regex matching support)
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Group, GroupItem } from '@/types/group';
 
 /**
- * 根據模型名稱獲取 Group（包含 Items）
- * 支援完全匹配和正則表達式匹配
+ * Get a Group by model name (including Items)
+ * Supports exact match and regex matching
  */
 export async function getGroupByModel(db: D1Database, modelName: string): Promise<Group | null> {
-  // 1. 先嘗試完全匹配
+  // 1. Try exact match first
   const exactMatch = await db
     .prepare(
-      `SELECT id, name, mode, match_regex, first_token_timeout
+      `SELECT id, name, mode, match_regex, first_token_time_out
        FROM groups
        WHERE name = ?
        LIMIT 1`
@@ -30,17 +30,17 @@ export async function getGroupByModel(db: D1Database, modelName: string): Promis
       name: string;
       mode: number;
       match_regex: string;
-      first_token_timeout: number;
+      first_token_time_out: number;
     }>();
 
   if (exactMatch) {
     return await getGroupWithItems(db, exactMatch);
   }
 
-  // 2. 嘗試正則表達式匹配
+  // 2. Try regex matching
   const allGroups = await db
     .prepare(
-      `SELECT id, name, mode, match_regex, first_token_timeout
+      `SELECT id, name, mode, match_regex, first_token_time_out
        FROM groups
        WHERE match_regex IS NOT NULL AND match_regex != ''
        ORDER BY id ASC`
@@ -50,7 +50,7 @@ export async function getGroupByModel(db: D1Database, modelName: string): Promis
       name: string;
       mode: number;
       match_regex: string;
-      first_token_timeout: number;
+      first_token_time_out: number;
     }>();
 
   for (const group of allGroups.results || []) {
@@ -68,12 +68,12 @@ export async function getGroupByModel(db: D1Database, modelName: string): Promis
 }
 
 /**
- * 根據 ID 獲取 Group（包含 Items）
+ * Get a Group by ID (including Items)
  */
 export async function getGroupById(db: D1Database, id: number): Promise<Group | null> {
   const groupResult = await db
     .prepare(
-      `SELECT id, name, mode, match_regex, first_token_timeout
+      `SELECT id, name, mode, match_regex, first_token_time_out
        FROM groups
        WHERE id = ?`
     )
@@ -83,7 +83,7 @@ export async function getGroupById(db: D1Database, id: number): Promise<Group | 
       name: string;
       mode: number;
       match_regex: string;
-      first_token_timeout: number;
+      first_token_time_out: number;
     }>();
 
   if (!groupResult) {
@@ -94,7 +94,7 @@ export async function getGroupById(db: D1Database, id: number): Promise<Group | 
 }
 
 /**
- * 輔助函數：獲取 Group 並填充 Items
+ * Helper: fetch a Group and populate its Items
  */
 async function getGroupWithItems(
   db: D1Database,
@@ -103,10 +103,10 @@ async function getGroupWithItems(
     name: string;
     mode: number;
     match_regex: string;
-    first_token_timeout: number;
+    first_token_time_out: number;
   }
 ): Promise<Group> {
-  // 查詢關聯的 GroupItems
+  // Query associated GroupItems
   const itemsResult = await db
     .prepare(
       `SELECT id, group_id, channel_id, model_name, priority, weight
@@ -138,18 +138,18 @@ async function getGroupWithItems(
     name: groupData.name,
     mode: groupData.mode,
     matchRegex: groupData.match_regex,
-    firstTokenTimeOut: groupData.first_token_timeout,
+    firstTokenTimeOut: groupData.first_token_time_out,
     items,
   };
 }
 
 /**
- * 獲取所有 Groups
+ * Get all Groups
  */
 export async function getAllGroups(db: D1Database): Promise<Group[]> {
   const groupsResult = await db
     .prepare(
-      `SELECT id, name, mode, match_regex, first_token_timeout
+      `SELECT id, name, mode, match_regex, first_token_time_out
        FROM groups
        ORDER BY id ASC`
     )
@@ -158,7 +158,7 @@ export async function getAllGroups(db: D1Database): Promise<Group[]> {
       name: string;
       mode: number;
       match_regex: string;
-      first_token_timeout: number;
+      first_token_time_out: number;
     }>();
 
   const groups: Group[] = [];
@@ -171,7 +171,7 @@ export async function getAllGroups(db: D1Database): Promise<Group[]> {
 }
 
 /**
- * 創建新的 Group
+ * Create a new Group
  */
 
 export async function listGroups(db: D1Database): Promise<Group[]> {
@@ -182,33 +182,52 @@ export async function getGroup(db: D1Database, id: number): Promise<Group | null
   return getGroupById(db, id);
 }
 
-export async function createGroup(db: D1Database, data: any): Promise<number> {
+export async function createGroup(
+  db: D1Database,
+  data: {
+    name: string;
+    mode: number;
+    match_regex?: string;
+    first_token_time_out?: number;
+  }
+): Promise<number> {
   const result = await db
-    .prepare('INSERT INTO groups (name, model, mode, enabled) VALUES (?, ?, ?, ?)')
-    .bind(data.name, data.model, data.mode, data.enabled ? 1 : 0)
+    .prepare(
+      'INSERT INTO groups (name, mode, match_regex, first_token_time_out) VALUES (?, ?, ?, ?)'
+    )
+    .bind(data.name, data.mode, data.match_regex ?? '', data.first_token_time_out ?? 0)
     .run();
   return result.meta.last_row_id as number;
 }
 
-export async function updateGroup(db: D1Database, id: number, updates: any): Promise<void> {
+export async function updateGroup(
+  db: D1Database,
+  id: number,
+  updates: {
+    name?: string;
+    mode?: number;
+    match_regex?: string;
+    first_token_time_out?: number;
+  }
+): Promise<void> {
   const fields: string[] = [];
-  const values: any[] = [];
-  if (updates.name) {
-    fields.push('name = ?');
-    values.push(updates.name);
+  const values: unknown[] = [];
+
+  const fieldMap: Record<string, (v: unknown) => unknown> = {
+    name: (v) => v,
+    mode: (v) => v,
+    match_regex: (v) => v,
+    first_token_time_out: (v) => v,
+  };
+
+  for (const [key, transform] of Object.entries(fieldMap)) {
+    const val = updates[key as keyof typeof updates];
+    if (val !== undefined) {
+      fields.push(`${key} = ?`);
+      values.push(transform(val));
+    }
   }
-  if (updates.model) {
-    fields.push('model = ?');
-    values.push(updates.model);
-  }
-  if (updates.mode !== undefined) {
-    fields.push('mode = ?');
-    values.push(updates.mode);
-  }
-  if (updates.enabled !== undefined) {
-    fields.push('enabled = ?');
-    values.push(updates.enabled ? 1 : 0);
-  }
+
   if (fields.length > 0) {
     values.push(id);
     await db

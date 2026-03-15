@@ -308,7 +308,7 @@ async function getAutoSyncChannels(db: D1Database): Promise<readonly Channel[]> 
     ),
     db.prepare(
       `SELECT id, channel_id, enabled, channel_key, status_code,
-              last_use_timestamp, total_cost, remark
+              last_use_time_stamp, total_cost, remark
        FROM channel_keys
        WHERE enabled = 1
          AND channel_id IN (SELECT id FROM channels WHERE auto_sync = 1 AND enabled = 1)
@@ -328,7 +328,7 @@ async function getAutoSyncChannels(db: D1Database): Promise<readonly Channel[]> 
         enabled: row.enabled === 1,
         channelKey: row.channel_key,
         statusCode: row.status_code,
-        lastUseTimeStamp: row.last_use_timestamp,
+        lastUseTimeStamp: row.last_use_time_stamp,
         totalCost: row.total_cost,
         remark: row.remark,
       });

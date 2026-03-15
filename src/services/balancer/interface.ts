@@ -1,6 +1,6 @@
 /**
- * 負載平衡器介面
- * 對應原始 Go 專案的 internal/balancer/interface.go
+ * Load balancer interface
+ * Corresponds to internal/balancer/interface.go in the original Go project
  */
 
 import type { Bindings } from '@/types';
@@ -8,35 +8,35 @@ import type { Group, GroupItem } from '@/types/group';
 import { GroupMode } from '@/types/group';
 
 /**
- * 負載平衡器介面
+ * Load balancer interface
  */
 export interface Balancer {
   /**
-   * 選擇下一個 GroupItem
-   * @param group 模型分組
-   * @param excludeIds 需要排除的 GroupItem ID（已失敗的項目）
-   * @returns 選中的 GroupItem 或 null
+   * Select the next GroupItem
+   * @param group - Model group
+   * @param excludeIds - GroupItem IDs to exclude (failed items)
+   * @returns The selected GroupItem or null
    */
   selectNext(group: Group, excludeIds?: Set<number>): Promise<GroupItem | null>;
 
   /**
-   * 重置負載平衡器狀態
-   * @param groupId Group ID
+   * Reset load balancer state
+   * @param groupId - Group ID
    */
   reset(groupId: number): Promise<void>;
 }
 
 import { FailoverBalancer } from './failover';
 import { RandomBalancer } from './random';
-// 導入所有負載平衡器
+// Import all load balancers
 import { RoundRobinBalancer } from './round-robin';
 import { WeightedBalancer } from './weighted';
 
 /**
- * 負載平衡器工廠
- * @param mode 負載平衡模式
- * @param env Cloudflare Workers 環境綁定
- * @returns 對應的負載平衡器實例
+ * Load balancer factory
+ * @param mode - Load balancing mode
+ * @param env - Cloudflare Workers environment bindings
+ * @returns The corresponding load balancer instance
  */
 export function getBalancer(mode: GroupMode, env: Bindings): Balancer {
   switch (mode) {
@@ -49,16 +49,16 @@ export function getBalancer(mode: GroupMode, env: Bindings): Balancer {
     case GroupMode.Weighted:
       return new WeightedBalancer(env);
     default:
-      // 預設使用 RoundRobin
+      // Default to RoundRobin
       return new RoundRobinBalancer(env);
   }
 }
 
 /**
- * 輔助函數：過濾可用的 GroupItems
- * @param items 所有 GroupItems
- * @param excludeIds 需要排除的 ID
- * @returns 可用的 GroupItems
+ * Helper: filter available GroupItems
+ * @param items - All GroupItems
+ * @param excludeIds - IDs to exclude
+ * @returns Available GroupItems
  */
 export function filterAvailableItems(items: GroupItem[], excludeIds?: Set<number>): GroupItem[] {
   if (!excludeIds || excludeIds.size === 0) {

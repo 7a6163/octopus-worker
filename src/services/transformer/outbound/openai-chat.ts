@@ -1,6 +1,6 @@
 /**
- * OpenAI Chat Completions Outbound 轉換器
- * 對應原始 Go 專案的 internal/transformer/outbound/openai/chat.go
+ * OpenAI Chat Completions outbound transformer
+ * Corresponds to internal/transformer/outbound/openai/chat.go in the original Go project
  */
 
 import type { InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
@@ -8,24 +8,24 @@ import type { OutboundTransformer } from '../interface';
 
 export class OpenAIChatOutbound implements OutboundTransformer {
   /**
-   * 轉換內部請求為 OpenAI Chat Completions API 請求
+   * Convert internal request to OpenAI Chat Completions API request
    */
   async transformRequest(
     request: InternalLLMRequest,
     baseUrl: string,
     key: string
   ): Promise<Request> {
-    // 清理輔助欄位
+    // Clean helper fields
     const cleanedRequest = this.cleanHelpFields(request);
 
-    // 轉換 developer role 為 system role (OpenAI 不支援 developer)
+    // Convert developer role to system role (OpenAI doesn't support developer)
     for (const msg of cleanedRequest.messages) {
       if (msg.role === 'developer') {
         msg.role = 'system';
       }
     }
 
-    // 確保流式回應包含 usage 資訊
+    // Ensure streaming responses include usage info
     if (cleanedRequest.stream) {
       if (!cleanedRequest.streamOptions) {
         cleanedRequest.streamOptions = { includeUsage: true };
@@ -34,14 +34,14 @@ export class OpenAIChatOutbound implements OutboundTransformer {
       }
     }
 
-    // 序列化請求體
+    // Serialize request body
     const body = JSON.stringify(cleanedRequest);
 
-    // 構建完整 URL
+    // Build full URL
     const url = new URL(baseUrl.replace(/\/$/, ''));
     url.pathname = `${url.pathname}/chat/completions`;
 
-    // 建立 HTTP 請求
+    // Create HTTP request
     return new Request(url.toString(), {
       method: 'POST',
       headers: {
@@ -54,7 +54,7 @@ export class OpenAIChatOutbound implements OutboundTransformer {
   }
 
   /**
-   * 轉換 OpenAI 回應為內部格式
+   * Convert OpenAI response to internal format
    */
   async transformResponse(response: Response): Promise<InternalLLMResponse> {
     const text = await response.text();
@@ -66,7 +66,7 @@ export class OpenAIChatOutbound implements OutboundTransformer {
     try {
       const data = JSON.parse(text) as InternalLLMResponse;
 
-      // 檢查錯誤
+      // Check for errors
       if (data.error) {
         throw new Error(data.error.message || 'Unknown error');
       }
@@ -81,17 +81,17 @@ export class OpenAIChatOutbound implements OutboundTransformer {
   }
 
   /**
-   * 轉換 OpenAI SSE 流式事件為內部格式
+   * Convert OpenAI SSE streaming events to internal format
    */
   async transformStream(eventData: Uint8Array): Promise<InternalLLMResponse | null> {
     const text = new TextDecoder().decode(eventData);
 
-    // 跳過空行
+    // Skip empty lines
     if (!text || text.trim() === '') {
       return null;
     }
 
-    // 檢查 [DONE] 訊號
+    // Check for [DONE] signal
     if (text.trim() === '[DONE]') {
       return {
         object: '[DONE]',
@@ -102,7 +102,7 @@ export class OpenAIChatOutbound implements OutboundTransformer {
     try {
       const data = JSON.parse(text) as InternalLLMResponse;
 
-      // 檢查錯誤
+      // Check for errors
       if (data.error) {
         throw new Error(data.error.message || 'Stream error');
       }

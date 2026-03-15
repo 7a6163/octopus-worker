@@ -2,9 +2,9 @@ import { api } from './client';
 
 export interface GroupItem {
   id: number;
-  group_id: number;
-  channel_id: number;
-  model_name: string;
+  groupId: number;
+  channelId: number;
+  modelName: string;
   priority: number;
   weight: number;
 }
@@ -13,8 +13,8 @@ export interface Group {
   id: number;
   name: string;
   mode: number;
-  match_regex: string;
-  first_token_timeout: number;
+  matchRegex: string;
+  firstTokenTimeOut: number;
   items: GroupItem[];
 }
 
@@ -44,7 +44,7 @@ export function deleteGroup(id: number): Promise<void> {
   return api<void>(`/api/v1/groups/${id}`, { method: 'DELETE' });
 }
 
-export function addGroupItem(groupId: number, item: Omit<GroupItem, 'id' | 'group_id'>): Promise<GroupItem> {
+export function addGroupItem(groupId: number, item: Omit<GroupItem, 'id' | 'groupId'>): Promise<GroupItem> {
   return api<GroupItem>(`/api/v1/groups/${groupId}/items`, {
     method: 'POST',
     body: JSON.stringify(item),

@@ -1,25 +1,25 @@
 /**
- * Channel 資料操作層
- * 對應原始 Go 專案的 internal/service/channel.go
+ * Channel data access layer
+ * Corresponds to internal/service/channel.go in the original Go project
  *
- * 功能：
- * - Channel CRUD 操作
- * - ChannelKey 關聯查詢
- * - 支援批次查詢
+ * Features:
+ * - Channel CRUD operations
+ * - ChannelKey association queries
+ * - Batch query support
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, D1Result } from '@cloudflare/workers-types';
 import type { Channel, ChannelKey } from '@/types/channel';
 
 /**
- * 根據 ID 獲取 Channel（包含 Keys）
+ * Get a Channel by ID (including Keys)
  */
 export async function getChannel(db: D1Database, id: number): Promise<Channel | null> {
-  // 查詢 Channel
+  // Query the Channel
   const channelResult = await db
     .prepare(
       `SELECT id, name, type, enabled, base_urls, model, custom_model,
-              proxy, auto_sync, auto_group, custom_header
+              proxy, auto_sync, auto_group, match_regex, custom_header
        FROM channels
        WHERE id = ?`
     )
@@ -35,6 +35,7 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
       proxy: number;
       auto_sync: number;
       auto_group: number;
+      match_regex: string;
       custom_header: string;
     }>();
 
@@ -42,11 +43,11 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
     return null;
   }
 
-  // 查詢關聯的 ChannelKeys
+  // Query associated ChannelKeys
   const keysResult = await db
     .prepare(
       `SELECT id, channel_id, enabled, channel_key, status_code,
-              last_use_timestamp, total_cost, remark
+              last_use_time_stamp, total_cost, remark
        FROM channel_keys
        WHERE channel_id = ? AND enabled = 1
        ORDER BY total_cost ASC`
@@ -58,7 +59,7 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
       enabled: number;
       channel_key: string;
       status_code: number;
-      last_use_timestamp: number;
+      last_use_time_stamp: number;
       total_cost: number;
       remark: string;
     }>();
@@ -69,12 +70,12 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
     enabled: key.enabled === 1,
     channelKey: key.channel_key,
     statusCode: key.status_code,
-    lastUseTimeStamp: key.last_use_timestamp,
+    lastUseTimeStamp: key.last_use_time_stamp,
     totalCost: key.total_cost,
     remark: key.remark,
   }));
 
-  // 組裝 Channel
+  // Assemble the Channel
   const channel: Channel = {
     id: channelResult.id,
     name: channelResult.name,
@@ -87,6 +88,7 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
     proxy: channelResult.proxy === 1,
     autoSync: channelResult.auto_sync === 1,
     autoGroup: channelResult.auto_group,
+    matchRegex: channelResult.match_regex,
     customHeader: JSON.parse(channelResult.custom_header),
   };
 
@@ -94,7 +96,7 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
 }
 
 /**
- * 批次獲取 Channels（包含 Keys）
+ * Batch fetch Channels (including Keys)
  */
 export async function getChannelsByIds(
   db: D1Database,
@@ -106,11 +108,11 @@ export async function getChannelsByIds(
 
   const placeholders = ids.map(() => '?').join(',');
 
-  // 批次查詢 Channels
+  // Batch query Channels
   const channelsResult = await db
     .prepare(
       `SELECT id, name, type, enabled, base_urls, model, custom_model,
-              proxy, auto_sync, auto_group, custom_header
+              proxy, auto_sync, auto_group, match_regex, custom_header
        FROM channels
        WHERE id IN (${placeholders})`
     )
@@ -126,14 +128,15 @@ export async function getChannelsByIds(
       proxy: number;
       auto_sync: number;
       auto_group: number;
+      match_regex: string;
       custom_header: string;
     }>();
 
-  // 批次查詢 ChannelKeys
+  // Batch query ChannelKeys
   const keysResult = await db
     .prepare(
       `SELECT id, channel_id, enabled, channel_key, status_code,
-              last_use_timestamp, total_cost, remark
+              last_use_time_stamp, total_cost, remark
        FROM channel_keys
        WHERE channel_id IN (${placeholders}) AND enabled = 1
        ORDER BY channel_id ASC, total_cost ASC`
@@ -145,12 +148,12 @@ export async function getChannelsByIds(
       enabled: number;
       channel_key: string;
       status_code: number;
-      last_use_timestamp: number;
+      last_use_time_stamp: number;
       total_cost: number;
       remark: string;
     }>();
 
-  // 組裝 ChannelKeys Map
+  // Assemble ChannelKeys Map
   const keysMap = new Map<number, ChannelKey[]>();
   for (const key of keysResult.results || []) {
     if (!keysMap.has(key.channel_id)) {
@@ -162,13 +165,13 @@ export async function getChannelsByIds(
       enabled: key.enabled === 1,
       channelKey: key.channel_key,
       statusCode: key.status_code,
-      lastUseTimeStamp: key.last_use_timestamp,
+      lastUseTimeStamp: key.last_use_time_stamp,
       totalCost: key.total_cost,
       remark: key.remark,
     });
   }
 
-  // 組裝 Channels Map
+  // Assemble Channels Map
   const channelsMap = new Map<number, Channel>();
   for (const ch of channelsResult.results || []) {
     channelsMap.set(ch.id, {
@@ -183,6 +186,7 @@ export async function getChannelsByIds(
       proxy: ch.proxy === 1,
       autoSync: ch.auto_sync === 1,
       autoGroup: ch.auto_group,
+      matchRegex: ch.match_regex,
       customHeader: JSON.parse(ch.custom_header),
     });
   }
@@ -191,14 +195,14 @@ export async function getChannelsByIds(
 }
 
 /**
- * 獲取所有啟用的 Channels
+ * Get all enabled Channels
  */
 export async function getAllChannels(db: D1Database): Promise<Channel[]> {
-  // 查詢所有啟用的 Channels
+  // Query all enabled Channels
   const channelsResult = await db
     .prepare(
       `SELECT id, name, type, enabled, base_urls, model, custom_model,
-              proxy, auto_sync, auto_group, custom_header
+              proxy, auto_sync, auto_group, match_regex, custom_header
        FROM channels
        WHERE enabled = 1
        ORDER BY id ASC`
@@ -214,6 +218,7 @@ export async function getAllChannels(db: D1Database): Promise<Channel[]> {
       proxy: number;
       auto_sync: number;
       auto_group: number;
+      match_regex: string;
       custom_header: string;
     }>();
 
@@ -222,15 +227,15 @@ export async function getAllChannels(db: D1Database): Promise<Channel[]> {
     return [];
   }
 
-  // 批次獲取 Keys
+  // Batch fetch Keys
   const channelsMap = await getChannelsByIds(db, channelIds);
 
-  // 轉換為陣列
+  // Convert to array
   return Array.from(channelsMap.values());
 }
 
 /**
- * 更新 ChannelKey 狀態
+ * Update ChannelKey status
  */
 export async function updateChannelKeyStatus(
   db: D1Database,
@@ -244,7 +249,7 @@ export async function updateChannelKeyStatus(
     .prepare(
       `UPDATE channel_keys
        SET status_code = ?,
-           last_use_timestamp = ?,
+           last_use_time_stamp = ?,
            total_cost = ?
        WHERE id = ?`
     )
@@ -253,63 +258,139 @@ export async function updateChannelKeyStatus(
 }
 
 export async function listChannels(db: D1Database): Promise<Channel[]> {
-  return getAllChannels(db);
+  const channelsResult = await db
+    .prepare(
+      `SELECT id, name, type, enabled, base_urls, model, custom_model,
+              proxy, auto_sync, auto_group, match_regex, custom_header
+       FROM channels
+       ORDER BY id ASC`
+    )
+    .all<{
+      id: number;
+      name: string;
+      type: number;
+      enabled: number;
+      base_urls: string;
+      model: string;
+      custom_model: string;
+      proxy: number;
+      auto_sync: number;
+      auto_group: number;
+      match_regex: string;
+      custom_header: string;
+    }>();
+
+  const channelIds = channelsResult.results?.map((ch) => ch.id) || [];
+  if (channelIds.length === 0) {
+    return [];
+  }
+
+  const channelsMap = await getChannelsByIds(db, channelIds);
+  return Array.from(channelsMap.values());
 }
 
 export async function createChannel(
   db: D1Database,
   data: {
     name: string;
-    type: string;
-    baseUrl: string;
+    type: number;
     enabled: boolean;
-    maxRetries: number;
-    timeout: number;
+    base_urls: { url: string; delay: number }[];
+    model: string;
+    custom_model: string;
+    proxy: boolean;
+    auto_sync: boolean;
+    auto_group: number;
+    match_regex: string;
+    custom_header: { headerKey: string; headerValue: string }[];
+    keys_to_add: { enabled: boolean; channel_key: string; remark: string }[];
   }
 ): Promise<number> {
-  const result = await db
-    .prepare(
-      'INSERT INTO channels (name, type, enabled, base_urls, max_retries, timeout) VALUES (?, ?, ?, ?, ?, ?)'
-    )
-    .bind(
-      data.name,
-      data.type,
-      data.enabled ? 1 : 0,
-      JSON.stringify([{ url: data.baseUrl, delay: 0 }]),
-      data.maxRetries,
-      data.timeout
-    )
-    .run();
-  return result.meta.last_row_id as number;
+  const statements = [];
+
+  statements.push(
+    db
+      .prepare(
+        `INSERT INTO channels (name, type, enabled, base_urls, model, custom_model, proxy, auto_sync, auto_group, match_regex, custom_header)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        data.name,
+        data.type,
+        data.enabled ? 1 : 0,
+        JSON.stringify(data.base_urls),
+        data.model,
+        data.custom_model,
+        data.proxy ? 1 : 0,
+        data.auto_sync ? 1 : 0,
+        data.auto_group,
+        data.match_regex,
+        JSON.stringify(data.custom_header)
+      )
+  );
+
+  const results = await db.batch(statements);
+  const channelId = (results[0] as D1Result).meta.last_row_id as number;
+
+  // Insert channel keys
+  if (data.keys_to_add.length > 0) {
+    const keyStatements = data.keys_to_add.map((key) =>
+      db
+        .prepare(
+          'INSERT INTO channel_keys (channel_id, enabled, channel_key, remark) VALUES (?, ?, ?, ?)'
+        )
+        .bind(channelId, key.enabled ? 1 : 0, key.channel_key, key.remark)
+    );
+    await db.batch(keyStatements);
+  }
+
+  return channelId;
 }
 
-export async function updateChannel(db: D1Database, id: number, updates: any): Promise<void> {
+interface ChannelUpdate {
+  name?: string;
+  type?: number;
+  enabled?: boolean;
+  base_urls?: { url: string; delay: number }[];
+  model?: string;
+  custom_model?: string;
+  proxy?: boolean;
+  auto_sync?: boolean;
+  auto_group?: number;
+  match_regex?: string;
+  custom_header?: { headerKey: string; headerValue: string }[];
+}
+
+export async function updateChannel(
+  db: D1Database,
+  id: number,
+  updates: ChannelUpdate
+): Promise<void> {
   const fields: string[] = [];
-  const values: any[] = [];
-  if (updates.name) {
-    fields.push('name = ?');
-    values.push(updates.name);
+  const values: unknown[] = [];
+
+  const fieldMap: Record<string, (v: unknown) => unknown> = {
+    name: (v) => v,
+    type: (v) => v,
+    enabled: (v) => (v ? 1 : 0),
+    base_urls: (v) => JSON.stringify(v),
+    model: (v) => v,
+    custom_model: (v) => v,
+    proxy: (v) => (v ? 1 : 0),
+    auto_sync: (v) => (v ? 1 : 0),
+    auto_group: (v) => v,
+    match_regex: (v) => v,
+    custom_header: (v) => JSON.stringify(v),
+  };
+
+  for (const [key, transform] of Object.entries(fieldMap)) {
+    const val = updates[key as keyof ChannelUpdate];
+    if (val !== undefined) {
+      fields.push(`${key} = ?`);
+      values.push(transform(val));
+    }
   }
-  if (updates.type) {
-    fields.push('type = ?');
-    values.push(updates.type);
-  }
-  if (updates.enabled !== undefined) {
-    fields.push('enabled = ?');
-    values.push(updates.enabled ? 1 : 0);
-  }
-  if (updates.maxRetries) {
-    fields.push('max_retries = ?');
-    values.push(updates.maxRetries);
-  }
-  if (updates.timeout) {
-    fields.push('timeout = ?');
-    values.push(updates.timeout);
-  }
-  if (updates.baseUrl) {
-    fields.push('base_urls = ?');
-    values.push(JSON.stringify([{ url: updates.baseUrl, delay: 0 }]));
-  }
+
   if (fields.length > 0) {
     values.push(id);
     await db

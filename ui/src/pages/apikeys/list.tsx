@@ -37,10 +37,6 @@ export function ApiKeyListPage() {
     }
   };
 
-  const copyKey = (key: string) => {
-    navigator.clipboard.writeText(key).then(() => toast.success('Copied'));
-  };
-
   if (loading) return <p class="text-slate-400">Loading...</p>;
 
   return (
@@ -51,14 +47,9 @@ export function ApiKeyListPage() {
         columns={[
           { key: 'name', header: 'Name' },
           {
-            key: 'api_key',
+            key: 'apiKey',
             header: 'Key',
-            render: (r) => (
-              <div class="flex items-center gap-2">
-                <code class="text-xs text-slate-400">{r.api_key}</code>
-                <button onClick={() => copyKey(r.api_key)} class="text-xs text-blue-400 hover:text-blue-300 cursor-pointer">Copy</button>
-              </div>
-            ),
+            render: (r) => <code class="text-xs text-slate-400">{r.apiKey}</code>,
           },
           {
             key: 'enabled',
@@ -66,14 +57,14 @@ export function ApiKeyListPage() {
             render: (r) => <Toggle checked={r.enabled} onChange={(v) => handleToggle(r, v)} />,
           },
           {
-            key: 'max_cost',
+            key: 'maxCost',
             header: 'Max Cost',
-            render: (r) => <span>{r.max_cost ? formatCost(r.max_cost) : 'Unlimited'}</span>,
+            render: (r) => <span>{r.maxCost ? formatCost(r.maxCost) : 'Unlimited'}</span>,
           },
           {
-            key: 'expire_at',
+            key: 'expireAt',
             header: 'Expires',
-            render: (r) => <span class="text-xs">{r.expire_at ? formatDate(r.expire_at) : 'Never'}</span>,
+            render: (r) => <span class="text-xs">{r.expireAt ? formatDate(r.expireAt) : 'Never'}</span>,
           },
           {
             key: 'actions',

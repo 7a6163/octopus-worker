@@ -1,16 +1,16 @@
 /**
- * User 資料操作層
+ * User data access layer
  *
- * 功能：
- * - User CRUD 操作
- * - 密碼驗證
+ * Features:
+ * - User CRUD operations
+ * - Password verification
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
 import type { User } from '@/types/user';
 
 /**
- * 根據 username 獲取 User
+ * Get a User by username
  */
 export async function getUserByUsername(db: D1Database, username: string): Promise<User | null> {
   const result = await db
@@ -42,7 +42,7 @@ export async function getUserByUsername(db: D1Database, username: string): Promi
 }
 
 /**
- * 根據 ID 獲取 User
+ * Get a User by ID
  */
 export async function getUserById(db: D1Database, id: number): Promise<User | null> {
   const result = await db
@@ -74,7 +74,7 @@ export async function getUserById(db: D1Database, id: number): Promise<User | nu
 }
 
 /**
- * 獲取所有 Users
+ * Get all Users
  */
 export async function getAllUsers(db: D1Database): Promise<Omit<User, 'password'>[]> {
   const result = await db
@@ -99,7 +99,7 @@ export async function getAllUsers(db: D1Database): Promise<Omit<User, 'password'
 }
 
 /**
- * 創建新的 User
+ * Create a new User
  */
 export async function createUser(db: D1Database, user: Omit<User, 'id'>): Promise<number> {
   const result = await db
@@ -109,7 +109,7 @@ export async function createUser(db: D1Database, user: Omit<User, 'id'>): Promis
     )
     .bind(
       user.username,
-      user.password, // 應該已經是雜湊過的密碼
+      user.password, // Should already be a hashed password
       user.role,
       user.enabled ? 1 : 0
     )
@@ -119,7 +119,7 @@ export async function createUser(db: D1Database, user: Omit<User, 'id'>): Promis
 }
 
 /**
- * 更新 User
+ * Update a User
  */
 export async function updateUser(db: D1Database, user: User): Promise<void> {
   await db
@@ -136,14 +136,14 @@ export async function updateUser(db: D1Database, user: User): Promise<void> {
 }
 
 /**
- * 刪除 User
+ * Delete a User
  */
 export async function deleteUser(db: D1Database, id: number): Promise<void> {
   await db.prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
 }
 
 /**
- * 驗證使用者憑證
+ * Validate user credentials
  */
 export async function validateCredentials(
   db: D1Database,
@@ -156,12 +156,12 @@ export async function validateCredentials(
     return null;
   }
 
-  // 檢查是否啟用
+  // Check if enabled
   if (!user.enabled) {
     return null;
   }
 
-  // 驗證密碼
+  // Verify password
   const { verifyPassword } = await import('@/services/auth/password');
   const isValid = await verifyPassword(password, user.password);
 

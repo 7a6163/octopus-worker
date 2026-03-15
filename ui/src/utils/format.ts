@@ -16,8 +16,3 @@ export function formatDate(ts: number): string {
   if (!ts) return '--';
   return new Date(ts).toLocaleString();
 }
-
-export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-}

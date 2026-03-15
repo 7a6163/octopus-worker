@@ -1,5 +1,5 @@
 /**
- * Octopus Workers 入口檔案
+ * Octopus Workers entry file
  */
 
 import { Hono } from 'hono';
@@ -7,15 +7,15 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import type { Bindings, Variables } from '@/types';
 
-// 匯出 Durable Objects
+// Export Durable Objects
 export { RoundRobinCounter } from '@/durable-objects/round-robin-counter';
 export { StatsAggregator } from '@/durable-objects/stats-aggregator';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// ==================== 全域中間件 ====================
+// ==================== Global Middleware ====================
 
-// 日誌記錄
+// Logging
 app.use('*', logger());
 
 // CORS
@@ -30,14 +30,14 @@ app.use(
   })
 );
 
-// 請求 ID 與時間戳記
+// Request ID and timestamp
 app.use('*', async (c, next) => {
   c.set('requestId', crypto.randomUUID());
   c.set('startTime', Date.now());
   await next();
 });
 
-// ==================== 健康檢查 ====================
+// ==================== Health Check ====================
 
 app.get('/health', (c) => {
   return c.json({
@@ -65,7 +65,7 @@ app.get('/', (c) => {
   });
 });
 
-// ==================== API 路由 ====================
+// ==================== API Routes ====================
 
 // Relay API
 import relayRoutes from '@/routes/relay';
@@ -77,7 +77,7 @@ import adminRoutes from '@/routes/admin';
 
 app.route('/api/v1', adminRoutes);
 
-// ==================== 404 處理 ====================
+// ==================== 404 Handler ====================
 
 app.notFound((c) => {
   return c.json(
@@ -92,7 +92,7 @@ app.notFound((c) => {
   );
 });
 
-// ==================== 錯誤處理 ====================
+// ==================== Error Handler ====================
 
 app.onError((err, c) => {
   console.error('Error:', err);
@@ -108,7 +108,7 @@ app.onError((err, c) => {
   );
 });
 
-// ==================== 匯出 ====================
+// ==================== Export ====================
 
 import { handleScheduled } from '@/services/cron/handler';
 

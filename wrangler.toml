@@ -1,6 +1,7 @@
 #:schema node_modules/wrangler/config-schema.json
 # Octopus Workers - LLM API Aggregation & Load Balancing Service
 name = "octopus-workers"
+account_id = "bb0939ef962c26798e65a7ad35baa0ac"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -25,13 +26,13 @@ new_classes = ["StatsAggregator", "RoundRobinCounter"]
 [[d1_databases]]
 binding = "DB"
 database_name = "octopus-db"
-database_id = ""  # 填入: wrangler d1 create octopus-db
+database_id = "5df19b6c-f007-4f2b-8976-fdd865cca6f8"
 migrations_dir = "migrations"
 
 # ==================== Workers KV ====================
 [[kv_namespaces]]
 binding = "CACHE"
-id = ""  # 填入: wrangler kv namespace create CACHE
+id = "434bfe185f1e4ef4bd5a3019cded7abf"
 
 # ==================== Environment Variables ====================
 [vars]
@@ -55,31 +56,6 @@ crons = [
 enabled = true
 
 # ==================== Development Environment ====================
-[env.dev]
-name = "octopus-workers-dev"
-vars = { ENVIRONMENT = "development" }
-
-[[env.dev.d1_databases]]
-binding = "DB"
-database_name = "octopus-db-dev"
-database_id = ""  # 開發環境 database_id
-migrations_dir = "migrations"
-
-[[env.dev.kv_namespaces]]
-binding = "CACHE"
-id = ""  # 開發環境 KV namespace id
-
-# ==================== Staging Environment ====================
-[env.staging]
-name = "octopus-workers-staging"
-vars = { ENVIRONMENT = "staging" }
-
-[[env.staging.d1_databases]]
-binding = "DB"
-database_name = "octopus-db-staging"
-database_id = ""  # Staging 環境 database_id
-migrations_dir = "migrations"
-
-[[env.staging.kv_namespaces]]
-binding = "CACHE"
-id = ""  # Staging 環境 KV namespace id
+# To enable dev/staging environments, create separate D1 databases and KV namespaces:
+#   wrangler d1 create octopus-db-dev
+#   wrangler kv namespace create CACHE --env dev

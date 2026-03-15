@@ -1,5 +1,5 @@
 /**
- * JWT 認證服務測試
+ * JWT authentication service tests
  */
 
 import { describe, expect, it } from 'vitest';

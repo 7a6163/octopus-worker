@@ -1,5 +1,5 @@
 /**
- * LLM Model 相關類型定義
+ * LLM Model-related type definitions
  */
 
 export interface LLMInfo {

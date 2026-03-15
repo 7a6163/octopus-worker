@@ -1,6 +1,6 @@
 /**
- * Channel 相關類型定義
- * 對應原始 Go 專案的 internal/model/channel.go
+ * Channel-related type definitions
+ * Corresponds to internal/model/channel.go in the original Go project
  */
 
 export enum OutboundType {
@@ -70,7 +70,7 @@ export interface StatsChannel {
   requestFailed: number;
 }
 
-// 渠道更新請求
+// Channel update request
 export interface ChannelUpdateRequest {
   id: number;
   name?: string;

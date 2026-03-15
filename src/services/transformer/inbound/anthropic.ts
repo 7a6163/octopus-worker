@@ -1,6 +1,6 @@
 /**
- * Anthropic Messages Inbound 轉換器
- * 對應原始 Go 專案的 internal/transformer/inbound/anthropic/messages.go
+ * Anthropic Messages inbound transformer
+ * Corresponds to internal/transformer/inbound/anthropic/messages.go in the original Go project
  */
 
 import type { InternalLLMRequest, InternalLLMResponse, Message, ToolCall } from '@/types/llm';
@@ -62,7 +62,7 @@ export class AnthropicInbound implements InboundTransformer {
   private streamState: InboundStreamState | null = null;
 
   /**
-   * 將客戶端 Anthropic 格式請求轉換為內部格式
+   * Convert client Anthropic-format request to internal format
    */
   async transformRequest(body: ArrayBuffer): Promise<InternalLLMRequest> {
     const text = new TextDecoder().decode(body);
@@ -74,7 +74,7 @@ export class AnthropicInbound implements InboundTransformer {
     try {
       const req = JSON.parse(text) as AnthropicRequest;
 
-      // 驗證必要欄位
+      // Validate required fields
       if (!req.model) {
         throw new Error('model is required');
       }
@@ -87,7 +87,7 @@ export class AnthropicInbound implements InboundTransformer {
         throw new Error('messages is required and must be an array');
       }
 
-      // 轉換為內部格式
+      // Convert to internal format
       const internalReq: InternalLLMRequest = {
         model: req.model,
         messages: this.convertMessages(req),
@@ -170,12 +170,12 @@ export class AnthropicInbound implements InboundTransformer {
   }
 
   /**
-   * 將內部格式回應轉換為 Anthropic 格式
+   * Convert internal response to Anthropic format
    */
   async transformResponse(response: InternalLLMResponse): Promise<Uint8Array> {
     this.lastResponse = response;
 
-    // 轉換為 Anthropic 格式
+    // Convert to Anthropic format
     const anthropicResp = this.convertToAnthropicResponse(response);
 
     const text = JSON.stringify(anthropicResp);
@@ -183,7 +183,7 @@ export class AnthropicInbound implements InboundTransformer {
   }
 
   /**
-   * 將內部流式回應轉換為 Anthropic SSE 格式
+   * Convert internal streaming response to Anthropic SSE format
    */
   async transformStream(stream: InternalLLMResponse): Promise<Uint8Array | null> {
     this.lastResponse = stream;
@@ -197,7 +197,7 @@ export class AnthropicInbound implements InboundTransformer {
       };
     }
 
-    // [DONE] 訊號
+    // [DONE] signal
     if (stream.object === '[DONE]') {
       const events: Array<{ type: string; data: unknown }> = [];
       // Close any open content blocks
@@ -213,7 +213,7 @@ export class AnthropicInbound implements InboundTransformer {
       );
     }
 
-    // 轉換為 Anthropic 流式事件
+    // Convert to Anthropic streaming events
     const events = this.convertToAnthropicStreamEvents(stream);
 
     if (!events || events.length === 0) {
@@ -227,16 +227,16 @@ export class AnthropicInbound implements InboundTransformer {
   }
 
   /**
-   * 取得最後的內部回應
+   * Get the last internal response
    */
   getInternalResponse(): InternalLLMResponse | null {
     return this.lastResponse;
   }
 
-  // ==================== 私有輔助方法 ====================
+  // ==================== Private helper methods ====================
 
   /**
-   * 轉換訊息陣列
+   * Convert message array
    */
   private convertMessages(req: AnthropicRequest): Message[] {
     const result: Message[] = [];
@@ -336,7 +336,7 @@ export class AnthropicInbound implements InboundTransformer {
   }
 
   /**
-   * 轉換為 Anthropic 回應格式
+   * Convert to Anthropic response format
    */
   private convertToAnthropicResponse(response: InternalLLMResponse): any {
     const choice = response.choices[0];
@@ -346,7 +346,7 @@ export class AnthropicInbound implements InboundTransformer {
 
     const content: any[] = [];
 
-    // Thinking 內容
+    // Thinking content
     if (choice.message?.reasoningContent) {
       content.push({
         type: 'thinking',
@@ -355,7 +355,7 @@ export class AnthropicInbound implements InboundTransformer {
       });
     }
 
-    // 文字內容
+    // Text content
     if (choice.message?.content?.content) {
       content.push({
         type: 'text',
@@ -394,7 +394,7 @@ export class AnthropicInbound implements InboundTransformer {
   }
 
   /**
-   * 轉換為 Anthropic 流式事件
+   * Convert to Anthropic streaming events
    */
   private convertToAnthropicStreamEvents(
     stream: InternalLLMResponse
@@ -407,7 +407,7 @@ export class AnthropicInbound implements InboundTransformer {
       return [];
     }
 
-    // message_start 事件
+    // message_start event
     if (choice.delta?.role === 'assistant') {
       events.push({
         type: 'message_start',
@@ -528,7 +528,7 @@ export class AnthropicInbound implements InboundTransformer {
       }
     }
 
-    // message_delta 事件
+    // message_delta event
     if (choice.finishReason || stream.usage) {
       // Close any open content blocks
       if (state.hasTextStarted) {
@@ -555,7 +555,7 @@ export class AnthropicInbound implements InboundTransformer {
   }
 
   /**
-   * 轉換 finishReason
+   * Convert finishReason to Anthropic stop_reason
    */
   private convertFinishReason(reason: string): string {
     const mapping: Record<string, string> = {
@@ -569,7 +569,7 @@ export class AnthropicInbound implements InboundTransformer {
 }
 
 /**
- * 將 Anthropic thinking budget_tokens 對應到 reasoning effort
+ * Map Anthropic thinking budget_tokens to reasoning effort level
  */
 function thinkingBudgetToEffort(budgetTokens: number): string {
   if (budgetTokens <= 2048) return 'low';

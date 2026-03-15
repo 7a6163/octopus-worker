@@ -1,6 +1,6 @@
 /**
- * Group 相關類型定義
- * 對應原始 Go 專案的 internal/model/group.go
+ * Group-related type definitions
+ * Corresponds to internal/model/group.go in the original Go project
  */
 
 export enum GroupMode {
@@ -28,7 +28,7 @@ export interface GroupItem {
   weight: number;
 }
 
-// 分組更新請求
+// Group update request
 export interface GroupUpdateRequest {
   id: number;
   name?: string;

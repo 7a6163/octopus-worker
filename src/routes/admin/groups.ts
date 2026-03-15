@@ -1,5 +1,5 @@
 /**
- * Groups 管理 API
+ * Groups management API
  */
 
 import { zValidator } from '@hono/zod-validator';
@@ -22,21 +22,21 @@ const groups = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 // Validation schemas
 const createGroupSchema = z.object({
   name: z.string().min(1).max(100),
-  model: z.string().min(1).max(100),
   mode: z.nativeEnum(GroupMode),
-  enabled: z.boolean().default(true),
+  match_regex: z.string().default(''),
+  first_token_time_out: z.number().int().min(0).default(0),
 });
 
 const updateGroupSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  model: z.string().min(1).max(100).optional(),
   mode: z.nativeEnum(GroupMode).optional(),
-  enabled: z.boolean().optional(),
+  match_regex: z.string().optional(),
+  first_token_time_out: z.number().int().min(0).optional(),
 });
 
 /**
  * GET /api/v1/admin/groups
- * 列出所有 groups
+ * List all groups
  */
 groups.get('/', async (c) => {
   try {
@@ -47,24 +47,24 @@ groups.get('/', async (c) => {
     });
   } catch (err) {
     console.error('Failed to list groups:', err);
-    return c.json({ code: 500, message: '獲取 groups 列表失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to list groups' }, 500);
   }
 });
 
 /**
  * GET /api/v1/admin/groups/:id
- * 獲取指定 group
+ * Get a specific group
  */
 groups.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的 group ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid group ID' }, 400);
   }
 
   try {
     const group = await getGroup(c.env.DB, id);
     if (!group) {
-      return c.json({ code: 404, message: 'Group 不存在' }, 404);
+      return c.json({ code: 404, message: 'Group not found' }, 404);
     }
     return c.json({
       code: 200,
@@ -72,13 +72,13 @@ groups.get('/:id', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get group:', err);
-    return c.json({ code: 500, message: '獲取 group 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get group' }, 500);
   }
 });
 
 /**
  * GET /api/v1/admin/groups/by-model/:model
- * 根據模型名稱獲取 group
+ * Get group by model name
  */
 groups.get('/by-model/:model', async (c) => {
   const model = c.req.param('model');
@@ -86,7 +86,7 @@ groups.get('/by-model/:model', async (c) => {
   try {
     const group = await getGroupByModel(c.env.DB, model);
     if (!group) {
-      return c.json({ code: 404, message: '未找到該模型對應的 group' }, 404);
+      return c.json({ code: 404, message: 'No group found for this model' }, 404);
     }
     return c.json({
       code: 200,
@@ -94,25 +94,25 @@ groups.get('/by-model/:model', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get group by model:', err);
-    return c.json({ code: 500, message: '獲取 group 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get group' }, 500);
   }
 });
 
 /**
  * POST /api/v1/admin/groups
- * 創建新 group
+ * Create a new group
  */
 groups.post('/', zValidator('json', createGroupSchema), async (c) => {
   const body = c.req.valid('json');
 
   try {
-    // 檢查該模型是否已存在 group
-    const existing = await getGroupByModel(c.env.DB, body.model);
+    // Check if name already exists
+    const existing = await getGroupByModel(c.env.DB, body.name);
     if (existing) {
       return c.json(
         {
           code: 400,
-          message: `模型 ${body.model} 已存在對應的 group`,
+          message: `Group "${body.name}" already exists`,
         },
         400
       );
@@ -122,42 +122,42 @@ groups.post('/', zValidator('json', createGroupSchema), async (c) => {
 
     return c.json({
       code: 200,
-      message: 'Group 創建成功',
+      message: 'Group created successfully',
       data: { id: groupId },
     });
   } catch (err) {
     console.error('Failed to create group:', err);
-    return c.json({ code: 500, message: '創建 group 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to create group' }, 500);
   }
 });
 
 /**
  * PUT /api/v1/admin/groups/:id
- * 更新 group
+ * Update a group
  */
 groups.put('/:id', zValidator('json', updateGroupSchema), async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的 group ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid group ID' }, 400);
   }
 
   const body = c.req.valid('json');
 
   try {
-    // 檢查 group 是否存在
+    // Check if group exists
     const existing = await getGroup(c.env.DB, id);
     if (!existing) {
-      return c.json({ code: 404, message: 'Group 不存在' }, 404);
+      return c.json({ code: 404, message: 'Group not found' }, 404);
     }
 
-    // 如果更新模型名稱，檢查新模型是否已被其他 group 使用
-    if (body.model && body.model !== existing.name) {
-      const conflict = await getGroupByModel(c.env.DB, body.model);
+    // If updating name, check if the new name is already used by another group
+    if (body.name && body.name !== existing.name) {
+      const conflict = await getGroupByModel(c.env.DB, body.name);
       if (conflict && conflict.id !== id) {
         return c.json(
           {
             code: 400,
-            message: `模型 ${body.model} 已被其他 group 使用`,
+            message: `Group "${body.name}" already exists`,
           },
           400
         );
@@ -166,49 +166,49 @@ groups.put('/:id', zValidator('json', updateGroupSchema), async (c) => {
 
     await updateGroup(c.env.DB, id, body);
 
-    // 清除快取
+    // Invalidate cache
     await invalidateGroupCache(c.env.CACHE, id);
-    // TODO: 也需要清除 model 快取
+    // TODO: Also need to invalidate model cache
 
     return c.json({
       code: 200,
-      message: 'Group 更新成功',
+      message: 'Group updated successfully',
     });
   } catch (err) {
     console.error('Failed to update group:', err);
-    return c.json({ code: 500, message: '更新 group 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to update group' }, 500);
   }
 });
 
 /**
  * DELETE /api/v1/admin/groups/:id
- * 刪除 group
+ * Delete a group
  */
 groups.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的 group ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid group ID' }, 400);
   }
 
   try {
-    // 檢查 group 是否存在
+    // Check if group exists
     const existing = await getGroup(c.env.DB, id);
     if (!existing) {
-      return c.json({ code: 404, message: 'Group 不存在' }, 404);
+      return c.json({ code: 404, message: 'Group not found' }, 404);
     }
 
     await deleteGroup(c.env.DB, id);
 
-    // 清除快取
+    // Invalidate cache
     await invalidateGroupCache(c.env.CACHE, id);
 
     return c.json({
       code: 200,
-      message: 'Group 刪除成功',
+      message: 'Group deleted successfully',
     });
   } catch (err) {
     console.error('Failed to delete group:', err);
-    return c.json({ code: 500, message: '刪除 group 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to delete group' }, 500);
   }
 });
 

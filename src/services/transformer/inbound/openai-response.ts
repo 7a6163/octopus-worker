@@ -1,10 +1,10 @@
 /**
- * OpenAI Responses API Inbound 轉換器
- * 對應原始 Go 專案的 internal/transformer/inbound/openai/response.go
+ * OpenAI Responses API inbound transformer
+ * Corresponds to internal/transformer/inbound/openai/response.go in the original Go project
  *
- * 負責：
- * - 將客戶端 Responses API 請求轉為內部 Chat Completions 格式
- * - 將內部 Chat Completions 回應/流轉回 Responses API 格式給客戶端
+ * Responsibilities:
+ * - Convert client Responses API requests to internal Chat Completions format
+ * - Convert internal Chat Completions responses/streams back to Responses API format for the client
  */
 
 import type {
@@ -16,7 +16,7 @@ import type {
 } from '@/types/llm';
 import type { InboundTransformer } from '../interface';
 
-// ==================== Responses API 型別（客戶端格式）====================
+// ==================== Responses API types (client format) ====================
 
 interface ResponsesAPIRequest {
   model: string;
@@ -107,7 +107,7 @@ interface ResponsesStreamEvent {
   part?: { type: string; text?: string; annotations?: ResponsesAnnotation[] };
 }
 
-// ==================== Inbound 轉換器 ====================
+// ==================== Inbound transformer ====================
 
 export class OpenAIResponseInbound implements InboundTransformer {
   private lastResponse: InternalLLMResponse | null = null;
@@ -316,7 +316,7 @@ export class OpenAIResponseInbound implements InboundTransformer {
     return this.lastResponse;
   }
 
-  // ==================== Stream 輔助方法 ====================
+  // ==================== Stream helper methods ====================
 
   private formatEvent(event: Partial<ResponsesStreamEvent> & { type: string }): string {
     const ev: ResponsesStreamEvent = {
@@ -636,7 +636,7 @@ export class OpenAIResponseInbound implements InboundTransformer {
   }
 }
 
-// ==================== 輔助函數 ====================
+// ==================== Helper functions ====================
 
 function convertItemToMessage(item: ResponsesItem): Message | null {
   switch (item.type) {

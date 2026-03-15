@@ -1,5 +1,5 @@
 /**
- * Log 相關類型定義
+ * Log-related type definitions
  */
 
 import type { AttemptRecord } from './stats';
@@ -13,8 +13,8 @@ export interface RelayLog {
   actualModelName?: string;
   inputTokens: number;
   outputTokens: number;
-  ftut: number; // First Token Use Time (毫秒)
-  useTime: number; // Total Use Time (毫秒)
+  ftut: number; // First Token Use Time (milliseconds)
+  useTime: number; // Total Use Time (milliseconds)
   cost: number;
   requestContent?: string;
   responseContent?: string;

@@ -17,8 +17,8 @@ export function ApiKeyForm({ apiKey, onClose, onSaved }: ApiKeyFormProps) {
   const isEdit = !!apiKey;
 
   const [name, setName] = useState(apiKey?.name ?? '');
-  const [maxCost, setMaxCost] = useState(apiKey?.max_cost ?? 0);
-  const [supportedModels, setSupportedModels] = useState(apiKey?.supported_models ?? '');
+  const [maxCost, setMaxCost] = useState(apiKey?.maxCost ?? 0);
+  const [supportedModels, setSupportedModels] = useState(apiKey?.supportedModels ?? '');
   const [createdKey, setCreatedKey] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -26,14 +26,14 @@ export function ApiKeyForm({ apiKey, onClose, onSaved }: ApiKeyFormProps) {
     e.preventDefault();
     setSaving(true);
     try {
-      const data = { name, max_cost: maxCost, supported_models: supportedModels };
+      const data = { name, maxCost, supportedModels };
       if (isEdit) {
         await updateApiKey(apiKey.id, data);
         toast.success('API key updated');
         onSaved();
       } else {
         const result = await createApiKey(data);
-        setCreatedKey(result.api_key);
+        setCreatedKey(result.apiKey);
         toast.success('API key created');
       }
     } catch (err) {

@@ -5,7 +5,7 @@ interface HourlyChartProps {
 }
 
 export function HourlyChart({ data }: HourlyChartProps) {
-  const maxRequests = Math.max(...data.map((d) => d.requests), 1);
+  const maxRequests = Math.max(...data.map((d) => d.totalRequests), 1);
   const barWidth = 100 / 24;
 
   return (
@@ -14,7 +14,7 @@ export function HourlyChart({ data }: HourlyChartProps) {
       <div class="relative h-40">
         <svg viewBox="0 0 100 50" class="w-full h-full" preserveAspectRatio="none">
           {data.map((d) => {
-            const height = (d.requests / maxRequests) * 45;
+            const height = (d.totalRequests / maxRequests) * 45;
             const x = d.hour * barWidth + barWidth * 0.15;
             const width = barWidth * 0.7;
             return (
@@ -28,7 +28,7 @@ export function HourlyChart({ data }: HourlyChartProps) {
                   fill="#3b82f6"
                   opacity={0.8}
                 >
-                  <title>{`${d.hour}:00 - ${d.requests} requests`}</title>
+                  <title>{`${d.hour}:00 - ${d.totalRequests} requests`}</title>
                 </rect>
               </g>
             );

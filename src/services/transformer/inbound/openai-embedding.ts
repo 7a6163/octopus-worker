@@ -1,10 +1,10 @@
 /**
- * OpenAI Embeddings Inbound 轉換器
- * 對應原始 Go 專案的 internal/transformer/inbound/openai/embedding.go
+ * OpenAI Embeddings inbound transformer
+ * Corresponds to internal/transformer/inbound/openai/embedding.go in the original Go project
  *
- * 負責：
- * - 將客戶端 OpenAI Embedding 請求轉為內部格式
- * - 將內部 Embedding 回應轉回客戶端格式
+ * Responsibilities:
+ * - Convert client OpenAI Embedding requests to internal format
+ * - Convert internal Embedding responses back to client format
  */
 
 import type { EmbeddingObject, InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
@@ -56,7 +56,7 @@ export class OpenAIEmbeddingInbound implements InboundTransformer {
 
     return {
       model: parsed.model,
-      messages: [], // Embedding 不使用 messages
+      messages: [], // Embeddings don't use messages
       embeddingInput: parsed.input,
       embeddingDimensions: parsed.dimensions,
       embeddingEncodingFormat: parsed.encoding_format,
@@ -86,7 +86,7 @@ export class OpenAIEmbeddingInbound implements InboundTransformer {
   }
 
   async transformStream(_stream: InternalLLMResponse): Promise<Uint8Array | null> {
-    // Embedding API 不支援 streaming
+    // Embedding API does not support streaming
     return null;
   }
 

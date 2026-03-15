@@ -1,13 +1,13 @@
 /**
- * Relay 核心處理器
- * 對應原始 Go 專案的 internal/relay/relay.go
+ * Relay core handler
+ * Corresponds to the original Go project's internal/relay/relay.go
  *
- * 核心功能：
- * 1. 解析客戶端請求
- * 2. 選擇渠道與負載平衡
- * 3. 轉發請求到上游 API
- * 4. 處理回應（流式/非流式）
- * 5. 重試與容錯
+ * Core features:
+ * 1. Parse client requests
+ * 2. Channel selection and load balancing
+ * 3. Forward requests to upstream APIs
+ * 4. Handle responses (streaming/non-streaming)
+ * 5. Retry and fault tolerance
  */
 
 import type { Context } from 'hono';
@@ -37,7 +37,7 @@ import type { Bindings, Variables } from '@/types';
 import type { BaseUrl, Channel, ChannelKey } from '@/types/channel';
 import type { InternalLLMRequest } from '@/types/llm';
 
-const MAX_ROUNDS = 3; // 最大重試輪數
+const MAX_ROUNDS = 3; // Maximum retry rounds
 
 /**
  * Relay 處理器主函數
@@ -596,8 +596,8 @@ function copyHeaders(
   outRequest: Request,
   customHeaders: Array<{ headerKey: string; headerValue: string }>
 ) {
-  // Hop-by-hop headers 不應該轉發
-  const hopByHopHeaders = new Set([
+  // Headers that should not be forwarded
+  const skipHeaders = new Set([
     'connection',
     'keep-alive',
     'proxy-authenticate',
@@ -606,10 +606,16 @@ function copyHeaders(
     'trailers',
     'transfer-encoding',
     'upgrade',
+    'authorization',
+    'host',
+    'content-length',
+    'content-type',
+    'accept',
+    'accept-encoding',
   ]);
 
   for (const [key, value] of inRequest.headers) {
-    if (!hopByHopHeaders.has(key.toLowerCase())) {
+    if (!skipHeaders.has(key.toLowerCase())) {
       outRequest.headers.set(key, value);
     }
   }

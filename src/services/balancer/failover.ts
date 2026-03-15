@@ -1,11 +1,11 @@
 /**
- * Failover 負載平衡器
- * 對應原始 Go 專案的 internal/balancer/failover.go
+ * Failover load balancer
+ * Corresponds to internal/balancer/failover.go in the original Go project
  *
- * 功能：
- * - 按優先級排序選擇 GroupItem
- * - 支援故障轉移（優先級低的作為備份）
- * - 支援排除失敗的項目
+ * Features:
+ * - Selects GroupItem by priority order
+ * - Supports failover (lower-priority items serve as backups)
+ * - Supports excluding failed items
  */
 
 import type { Group, GroupItem } from '@/types/group';
@@ -13,43 +13,43 @@ import type { Balancer } from './interface';
 import { filterAvailableItems } from './interface';
 
 /**
- * Failover 負載平衡器
+ * Failover load balancer
  */
 export class FailoverBalancer implements Balancer {
   /**
-   * 選擇下一個 GroupItem（按優先級）
+   * Select the next GroupItem (by priority)
    */
   async selectNext(group: Group, excludeIds?: Set<number>): Promise<GroupItem | null> {
-    // 過濾可用的項目
+    // Filter available items
     const availableItems = filterAvailableItems(group.items, excludeIds);
 
     if (availableItems.length === 0) {
       return null;
     }
 
-    // 如果只有一個項目，直接返回
+    // If only one item, return it directly
     if (availableItems.length === 1) {
       return availableItems[0]!;
     }
 
-    // 按優先級排序（priority 越小優先級越高）
+    // Sort by priority (lower value = higher priority)
     const sortedItems = [...availableItems].sort((a, b) => {
-      // 先按 priority 排序
+      // Sort by priority first
       if (a.priority !== b.priority) {
         return a.priority - b.priority;
       }
-      // priority 相同時按 id 排序
+      // Break ties by id
       return a.id - b.id;
     });
 
-    // 返回優先級最高的項目
+    // Return the highest-priority item
     return sortedItems[0]!;
   }
 
   /**
-   * 重置（Failover 模式不需要狀態）
+   * Reset (failover mode has no state)
    */
   async reset(_groupId: number): Promise<void> {
-    // Failover 模式無狀態，無需重置
+    // Failover mode is stateless, no reset needed
   }
 }

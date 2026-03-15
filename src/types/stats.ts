@@ -1,5 +1,5 @@
 /**
- * 統計相關類型定義
+ * Statistics-related type definitions
  */
 
 export interface StatsMetrics {
@@ -31,7 +31,7 @@ export interface StatsModel extends StatsMetrics {
   channelId: number;
 }
 
-// 請求嘗試記錄
+// Request attempt record
 export interface AttemptRecord {
   round: number;
   attempt: number;
@@ -41,7 +41,7 @@ export interface AttemptRecord {
   timestamp: number;
 }
 
-// 統計更新請求
+// Stats update request
 export interface StatsUpdateRequest {
   metrics: StatsMetrics;
   channelId?: number;

@@ -5,7 +5,8 @@ LLM API aggregation and load balancing service running on Cloudflare Workers. Ac
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Setup](#setup)
+- [Quick Start](#quick-start)
+- [Admin UI](#admin-ui)
 - [Tutorial](#tutorial)
   - [Step 1: Login](#step-1-login)
   - [Step 2: Create Channels](#step-2-create-channels)
@@ -15,6 +16,7 @@ LLM API aggregation and load balancing service running on Cloudflare Workers. Ac
   - [Step 6: Enable Auto-Sync](#step-6-enable-auto-sync)
   - [Step 7: Monitor Usage](#step-7-monitor-usage)
 - [Using with SDKs and Tools](#using-with-sdks-and-tools)
+- [Deployment](#deployment)
 - [API Reference](#api-reference)
 - [Architecture](#architecture)
 - [Commands](#commands)
@@ -23,72 +25,134 @@ LLM API aggregation and load balancing service running on Cloudflare Workers. Ac
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 18+
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm install -g wrangler`)
-- A Cloudflare account
+- A [Cloudflare](https://dash.cloudflare.com/) account (free tier works)
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (included as dev dependency)
 
-## Setup
+## Quick Start
 
-### 1. Install Dependencies
+### 1. Clone and Install
 
 ```bash
+git clone https://github.com/7a6163/octopus-worker.git
+cd octopus-worker
 npm install
 ```
 
 ### 2. Create Cloudflare Resources
 
+If you're forking or deploying to your own account, create the required D1 database and KV namespace:
+
 ```bash
+# Login to Cloudflare (if not already)
+npx wrangler login
+
 # Create D1 database
-wrangler d1 create octopus-db
+npx wrangler d1 create octopus-db
 
 # Create KV namespace
-wrangler kv:namespace create CACHE
+npx wrangler kv namespace create CACHE
 ```
 
-Copy the returned `database_id` and KV `id` into `wrangler.toml`.
+Copy the returned `database_id` and KV `id` into the corresponding fields in `wrangler.toml`.
 
-### 3. Run Database Migrations
-
-```bash
-# Local development
-wrangler d1 migrations apply octopus-db --local
-
-# Remote (production)
-wrangler d1 migrations apply octopus-db --remote
-```
-
-### 4. Set Secrets
+### 3. Configure Local Environment
 
 ```bash
-# Generate a strong JWT secret
-openssl rand -base64 32
-
-# Set it
-wrangler secret put JWT_SECRET
-```
-
-For local development, copy `.dev.vars.example` to `.dev.vars` and fill in values:
-
-```bash
+# Copy the environment template
 cp .dev.vars.example .dev.vars
+```
+
+Edit `.dev.vars` and set a JWT secret:
+
+```
+JWT_SECRET=any-secret-string-for-local-dev
+```
+
+### 4. Run Database Migrations
+
+```bash
+# Apply migrations to local D1
+npx wrangler d1 migrations apply octopus-db --local
 ```
 
 ### 5. Start Development Server
 
 ```bash
+# Start the Worker backend (port 8787)
 npm run dev
 ```
 
-Server runs at `http://localhost:8787`. Verify with:
+Verify it's running:
 
 ```bash
 curl http://localhost:8787/health
 ```
 
-### 6. Deploy to Production
+### 6. Set Production Secrets
 
 ```bash
-npm run deploy
+# Generate and set JWT secret for production
+openssl rand -base64 32 | npx wrangler secret put JWT_SECRET
+
+# Apply migrations to remote D1
+npx wrangler d1 migrations apply octopus-db --remote
 ```
+
+---
+
+## Admin UI
+
+The project includes a web-based admin panel built with [Preact](https://preactjs.com/) + [Vite](https://vite.dev/) + [Tailwind CSS](https://tailwindcss.com/). It provides a visual interface for all management tasks.
+
+### UI Features
+
+| Page | Path | Description |
+|------|------|-------------|
+| Dashboard | `/` | Usage stats, request counts, cost overview, hourly charts |
+| Channels | `/channels` | CRUD upstream LLM providers and API keys |
+| Groups | `/groups` | Configure model routing and load balancing |
+| API Keys | `/apikeys` | Manage client-facing API keys with cost limits |
+| Users | `/users` | User management (admin/user roles) |
+| Settings | `/settings` | Circuit breaker, log retention, proxy config |
+| Model Prices | `/model-prices` | View/sync LLM pricing from models.dev |
+
+### Local Development
+
+Run the Worker backend and the UI dev server simultaneously:
+
+```bash
+# Terminal 1: Start the Worker backend
+npm run dev
+
+# Terminal 2: Start the UI dev server (port 5173)
+npm run ui:dev
+```
+
+Open `http://localhost:5173` in your browser. The Vite dev server proxies `/api/*` and `/v1/*` requests to the Worker at `localhost:8787`.
+
+Default login: `admin` / `admin`
+
+### Build and Deploy UI
+
+The UI is deployed as a static site on [Cloudflare Pages](https://pages.cloudflare.com/), separate from the Worker.
+
+```bash
+# Build only
+npm run ui:build
+
+# Build and deploy to Cloudflare Pages
+npm run ui:deploy
+```
+
+After deploying, configure the Pages project's custom domain or environment variables so the UI points to your Worker's production URL.
+
+### Tech Stack
+
+- **Preact** (~3KB) -- lightweight React alternative
+- **Vite** -- fast build tooling with HMR
+- **Tailwind CSS v4** -- utility-first CSS via `@tailwindcss/vite` plugin
+- **preact-router** -- client-side routing
+- **No component library** -- custom UI components (`ui/src/components/ui/`)
 
 ---
 
@@ -400,7 +464,7 @@ curl -X POST http://localhost:8787/api/v1/apikeys \
   }'
 ```
 
-Response includes the API key in `sk-...` format. **Save it now** - it will be masked in future GET requests.
+Response includes the API key in `oct-...` format. **Save it now** -- it will be masked in future GET requests.
 
 | Field | Description |
 |-------|-------------|
@@ -433,7 +497,7 @@ With channels, groups, and an API key set up, you can now send requests. The pro
 
 ```bash
 curl http://localhost:8787/v1/chat/completions \
-  -H "Authorization: Bearer sk-your-api-key" \
+  -H "Authorization: Bearer oct-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o",
@@ -449,8 +513,8 @@ curl http://localhost:8787/v1/chat/completions \
 Add `"stream": true` to any request:
 
 ```bash
-curl http://localhost:8787/v1/chat/completions \
-  -H "Authorization: Bearer sk-your-api-key" \
+curl -N http://localhost:8787/v1/chat/completions \
+  -H "Authorization: Bearer oct-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o",
@@ -463,7 +527,7 @@ curl http://localhost:8787/v1/chat/completions \
 
 ```bash
 curl http://localhost:8787/v1/responses \
-  -H "Authorization: Bearer sk-your-api-key" \
+  -H "Authorization: Bearer oct-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "o4-mini",
@@ -475,7 +539,7 @@ curl http://localhost:8787/v1/responses \
 
 ```bash
 curl http://localhost:8787/v1/messages \
-  -H "Authorization: Bearer sk-your-api-key" \
+  -H "Authorization: Bearer oct-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "claude-sonnet-4-20250514",
@@ -488,7 +552,7 @@ curl http://localhost:8787/v1/messages \
 
 ```bash
 curl http://localhost:8787/v1/embeddings \
-  -H "Authorization: Bearer sk-your-api-key" \
+  -H "Authorization: Bearer oct-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "text-embedding-3-small",
@@ -500,7 +564,7 @@ curl http://localhost:8787/v1/embeddings \
 
 ```bash
 curl http://localhost:8787/v1/models \
-  -H "Authorization: Bearer sk-your-api-key"
+  -H "Authorization: Bearer oct-your-api-key"
 ```
 
 ### Step 6: Enable Auto-Sync
@@ -597,7 +661,7 @@ curl -X PUT http://localhost:8787/api/v1/settings/circuit_breaker_threshold \
 | `circuit_breaker_cooldown` | `60` | Cooldown period in seconds |
 | `circuit_breaker_max_cooldown` | `600` | Max cooldown with exponential backoff |
 | `relay_log_keep_period` | `7` | Log retention in days |
-| `proxy_url` | — | System-wide proxy URL |
+| `proxy_url` | -- | System-wide proxy URL |
 
 #### User Management
 
@@ -625,7 +689,7 @@ Since the proxy is OpenAI/Anthropic-compatible, you can use it as a drop-in repl
 from openai import OpenAI
 
 client = OpenAI(
-    api_key="sk-your-octopus-api-key",
+    api_key="oct-your-octopus-api-key",
     base_url="https://your-worker.workers.dev/v1"
 )
 
@@ -642,7 +706,7 @@ print(response.choices[0].message.content)
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  apiKey: 'sk-your-octopus-api-key',
+  apiKey: 'oct-your-octopus-api-key',
   baseURL: 'https://your-worker.workers.dev/v1',
 });
 
@@ -658,7 +722,7 @@ const response = await client.chat.completions.create({
 import anthropic
 
 client = anthropic.Anthropic(
-    api_key="sk-your-octopus-api-key",
+    api_key="oct-your-octopus-api-key",
     base_url="https://your-worker.workers.dev/v1"
 )
 
@@ -674,16 +738,41 @@ message = client.messages.create(
 In your editor settings, set:
 
 - **API Base URL**: `https://your-worker.workers.dev/v1`
-- **API Key**: `sk-your-octopus-api-key`
+- **API Key**: `oct-your-octopus-api-key`
 
-### curl with Streaming
+---
+
+## Deployment
+
+### Deploy the Worker
 
 ```bash
-curl -N http://localhost:8787/v1/chat/completions \
-  -H "Authorization: Bearer sk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "gpt-4o", "stream": true, "messages": [{"role": "user", "content": "Write a haiku"}]}'
+npm run deploy
 ```
+
+This deploys to Cloudflare Workers. Make sure you've set production secrets first:
+
+```bash
+npx wrangler secret put JWT_SECRET
+npx wrangler d1 migrations apply octopus-db --remote
+```
+
+### Deploy the Admin UI
+
+The UI is deployed separately to Cloudflare Pages:
+
+```bash
+npm run ui:deploy
+```
+
+On first deploy, Wrangler creates a Pages project named `octopus-ui`. You can then:
+
+1. Set a custom domain in the [Cloudflare Dashboard](https://dash.cloudflare.com/) under Pages
+2. Configure the API endpoint by pointing the UI to your Worker URL
+
+For production, the UI needs to reach the Worker API. Options:
+- Deploy both under the same domain with [Pages Functions](https://developers.cloudflare.com/pages/functions/) routing
+- Use a custom domain for the Worker and configure CORS in settings
 
 ---
 
@@ -759,6 +848,33 @@ Client Request
 
 Retry logic: up to 3 rounds across available channels. Failed channels are excluded from subsequent attempts within the same request.
 
+### Project Structure
+
+```
+octopus-workers/
+├── src/                    # Worker source code
+│   ├── index.ts            # Entry point, Hono app setup
+│   ├── routes/
+│   │   ├── admin/          # Admin API routes (JWT auth)
+│   │   └── relay/          # LLM relay routes (API key auth)
+│   ├── services/
+│   │   ├── balancer/       # Load balancing strategies
+│   │   └── transformer/    # Request/response format conversion
+│   │       ├── inbound/    # Client -> internal format
+│   │       └── outbound/   # Internal -> upstream format
+│   └── durable-objects/    # StatsAggregator, RoundRobinCounter
+├── ui/                     # Admin SPA (Preact + Vite)
+│   ├── src/
+│   │   ├── pages/          # Route pages (dashboard, channels, etc.)
+│   │   ├── components/     # Reusable UI components
+│   │   ├── hooks/          # Custom hooks (auth, API, toast)
+│   │   └── api/            # HTTP client with JWT injection
+│   └── vite.config.ts      # Vite config with API proxy
+├── migrations/             # D1 SQL migrations
+├── wrangler.toml           # Cloudflare Worker configuration
+└── .dev.vars.example       # Local environment template
+```
+
 ### Supported Formats
 
 | Format | Inbound (client -> proxy) | Outbound (proxy -> upstream) |
@@ -800,11 +916,17 @@ Each channel+key+model combination has an independent circuit breaker:
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Local dev server (wrangler dev) |
-| `npm run deploy` | Deploy to Cloudflare |
+| `npm run dev` | Start Worker dev server (localhost:8787) |
+| `npm run deploy` | Deploy Worker to Cloudflare |
 | `npm run test` | Run tests (vitest) |
 | `npm run typecheck` | TypeScript type checking |
+| `npm run lint` | Lint with Biome |
+| `npm run lint:fix` | Auto-fix lint issues |
+| `npm run ui:dev` | Start UI dev server (localhost:5173) |
+| `npm run ui:build` | Build UI for production |
+| `npm run ui:deploy` | Build and deploy UI to Cloudflare Pages |
 | `npm run db:migrate:dev` | Apply D1 migrations locally |
+| `npm run db:migrate:remote` | Apply D1 migrations to production |
 
 ## Inspired By
 

@@ -1,18 +1,18 @@
 /**
- * Settings 資料操作層
- * 對應原始 Go 專案的 internal/service/settings.go
+ * Settings data access layer
+ * Corresponds to internal/service/settings.go in the original Go project
  *
- * 功能：
- * - Settings CRUD 操作
- * - 批次更新設定
- * - 設定快取支援
+ * Features:
+ * - Settings CRUD operations
+ * - Batch settings updates
+ * - Settings cache support
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Setting } from '@/types/setting';
 
 /**
- * 根據 Key 獲取設定值
+ * Get a setting value by key
  */
 export async function getSetting(db: D1Database, key: string): Promise<string | null> {
   const result = await db
@@ -28,7 +28,7 @@ export async function getSetting(db: D1Database, key: string): Promise<string | 
 }
 
 /**
- * 根據 Key 獲取設定物件
+ * Get a setting object by key
  */
 export async function getSettingObject(db: D1Database, key: string): Promise<Setting | null> {
   const result = await db
@@ -54,7 +54,7 @@ export async function getSettingObject(db: D1Database, key: string): Promise<Set
 }
 
 /**
- * 獲取所有設定
+ * Get all settings
  */
 export async function getAllSettings(db: D1Database): Promise<Setting[]> {
   const result = await db
@@ -75,7 +75,7 @@ export async function getAllSettings(db: D1Database): Promise<Setting[]> {
 }
 
 /**
- * 獲取所有設定（以 Map 形式返回）
+ * Get all settings (returned as a Map)
  */
 export async function getAllSettingsAsMap(db: D1Database): Promise<Map<string, string>> {
   const settings = await getAllSettings(db);
@@ -89,10 +89,10 @@ export async function getAllSettingsAsMap(db: D1Database): Promise<Map<string, s
 }
 
 /**
- * 更新單一設定值
+ * Update a single setting value
  */
 export async function updateSetting(db: D1Database, key: string, value: string): Promise<void> {
-  // SQLite UPSERT 語法
+  // SQLite UPSERT syntax
   await db
     .prepare(
       `INSERT INTO settings (key, value)
@@ -104,13 +104,13 @@ export async function updateSetting(db: D1Database, key: string, value: string):
 }
 
 /**
- * 批次更新設定
+ * Batch update settings
  */
 export async function updateSettings(
   db: D1Database,
   settings: Record<string, string>
 ): Promise<void> {
-  // 使用事務批次更新
+  // Batch update using a transaction
   const statements: D1PreparedStatement[] = [];
 
   for (const [key, value] of Object.entries(settings)) {
@@ -125,12 +125,12 @@ export async function updateSettings(
     );
   }
 
-  // D1 批次執行
+  // D1 batch execution
   await db.batch(statements);
 }
 
 /**
- * 創建新設定
+ * Create a new setting
  */
 export async function createSetting(db: D1Database, setting: Setting): Promise<void> {
   await db
@@ -143,14 +143,14 @@ export async function createSetting(db: D1Database, setting: Setting): Promise<v
 }
 
 /**
- * 刪除設定
+ * Delete a setting
  */
 export async function deleteSetting(db: D1Database, key: string): Promise<void> {
   await db.prepare(`DELETE FROM settings WHERE key = ?`).bind(key).run();
 }
 
 /**
- * 獲取布林值設定
+ * Get a boolean setting
  */
 export async function getBooleanSetting(
   db: D1Database,
@@ -164,7 +164,7 @@ export async function getBooleanSetting(
 }
 
 /**
- * 獲取數字設定
+ * Get a numeric setting
  */
 export async function getNumberSetting(
   db: D1Database,

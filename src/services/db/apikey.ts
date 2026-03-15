@@ -1,18 +1,18 @@
 /**
- * APIKey 資料操作層
- * 對應原始 Go 專案的 internal/service/apikey.go
+ * APIKey data access layer
+ * Corresponds to internal/service/apikey.go in the original Go project
  *
- * 功能：
- * - APIKey CRUD 操作
- * - APIKey 驗證
- * - 配額與限制檢查
+ * Features:
+ * - APIKey CRUD operations
+ * - APIKey validation
+ * - Quota and limit checks
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
 import type { APIKey } from '@/types/apikey';
 
 /**
- * 根據 Key 字串獲取 APIKey
+ * Get an APIKey by key string
  */
 export async function getAPIKeyByKey(db: D1Database, key: string): Promise<APIKey | null> {
   const result = await db
@@ -48,8 +48,8 @@ export async function getAPIKeyByKey(db: D1Database, key: string): Promise<APIKe
 }
 
 /**
- * 驗證 APIKey 是否有效
- * 返回 APIKey 物件或 null（如果無效）
+ * Validate whether an APIKey is valid
+ * Returns the APIKey object, or null if invalid
  */
 export async function validateAPIKey(db: D1Database, key: string): Promise<APIKey | null> {
   const apiKey = await getAPIKeyByKey(db, key);
@@ -58,12 +58,12 @@ export async function validateAPIKey(db: D1Database, key: string): Promise<APIKe
     return null;
   }
 
-  // 檢查是否啟用
+  // Check if enabled
   if (!apiKey.enabled) {
     return null;
   }
 
-  // 檢查是否過期（0 表示不過期）
+  // Check if expired (0 means no expiration)
   if (apiKey.expireAt > 0 && apiKey.expireAt < Math.floor(Date.now() / 1000)) {
     return null;
   }
@@ -72,7 +72,7 @@ export async function validateAPIKey(db: D1Database, key: string): Promise<APIKe
 }
 
 /**
- * 根據 ID 獲取 APIKey
+ * Get an APIKey by ID
  */
 export async function getAPIKeyById(db: D1Database, id: number): Promise<APIKey | null> {
   const result = await db
@@ -108,7 +108,7 @@ export async function getAPIKeyById(db: D1Database, id: number): Promise<APIKey 
 }
 
 /**
- * 獲取所有 APIKeys
+ * Get all APIKeys
  */
 export async function getAllAPIKeys(db: D1Database): Promise<APIKey[]> {
   const result = await db
@@ -139,7 +139,7 @@ export async function getAllAPIKeys(db: D1Database): Promise<APIKey[]> {
 }
 
 /**
- * 創建新的 APIKey
+ * Create a new APIKey
  */
 export async function createAPIKey(db: D1Database, apiKey: Omit<APIKey, 'id'>): Promise<number> {
   const result = await db
@@ -162,7 +162,7 @@ export async function createAPIKey(db: D1Database, apiKey: Omit<APIKey, 'id'>): 
 }
 
 /**
- * 更新 APIKey
+ * Update an APIKey
  */
 export async function updateAPIKey(db: D1Database, apiKey: APIKey): Promise<void> {
   await db
@@ -189,7 +189,7 @@ export async function updateAPIKey(db: D1Database, apiKey: APIKey): Promise<void
 }
 
 /**
- * 刪除 APIKey
+ * Delete an APIKey
  */
 export async function deleteAPIKey(db: D1Database, id: number): Promise<void> {
   await db.prepare(`DELETE FROM api_keys WHERE id = ?`).bind(id).run();

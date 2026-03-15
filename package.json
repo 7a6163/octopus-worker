@@ -1,6 +1,6 @@
 {
   "name": "octopus-workers",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Octopus LLM API Aggregation on Cloudflare Workers",
   "main": "src/index.ts",
   "scripts": {

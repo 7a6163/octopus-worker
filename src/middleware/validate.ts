@@ -1,12 +1,12 @@
 /**
- * 驗證中間件
+ * Validation middleware
  */
 
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables } from '@/types';
 
 /**
- * 確保請求為 JSON
+ * Ensure request is JSON
  */
 export const requireJson = () => {
   return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {
@@ -29,7 +29,7 @@ export const requireJson = () => {
 };
 
 /**
- * 驗證請求體大小
+ * Validate request body size
  */
 export const validateBodySize = (maxSizeBytes: number) => {
   return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {

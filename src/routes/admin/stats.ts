@@ -1,5 +1,5 @@
 /**
- * Statistics 查詢 API
+ * Statistics query API
  */
 
 import { Hono } from 'hono';
@@ -10,11 +10,11 @@ const stats = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**
  * GET /api/v1/admin/stats
- * 獲取整體統計
+ * Get overall statistics
  */
 stats.get('/', async (c) => {
   try {
-    // 從 StatsAggregator DO 獲取統計
+    // Get stats from StatsAggregator DO
     const doId = c.env.STATS_AGGREGATOR.idFromName('global');
     const doStub = c.env.STATS_AGGREGATOR.get(doId);
 
@@ -33,7 +33,7 @@ stats.get('/', async (c) => {
     }>();
 
     if (!result.success) {
-      return c.json({ code: 500, message: '獲取統計失敗' }, 500);
+      return c.json({ code: 500, message: 'Failed to get statistics' }, 500);
     }
 
     return c.json({
@@ -48,7 +48,7 @@ stats.get('/', async (c) => {
 
 /**
  * GET /api/v1/admin/logs
- * 獲取 Relay 日誌
+ * Get relay logs
  */
 stats.get('/logs', async (c) => {
   try {
@@ -58,7 +58,7 @@ stats.get('/logs', async (c) => {
     const channelId = c.req.query('channel_id');
     const success = c.req.query('success');
 
-    // 構建查詢
+    // Build query
     let query = 'SELECT * FROM relay_logs WHERE 1=1';
     const bindings: any[] = [];
 
@@ -80,7 +80,7 @@ stats.get('/logs', async (c) => {
     query += ' ORDER BY time DESC LIMIT ? OFFSET ?';
     bindings.push(limit, offset);
 
-    // 執行查詢
+    // Execute query
     const result = await c.env.DB.prepare(query)
       .bind(...bindings)
       .all();
@@ -96,19 +96,19 @@ stats.get('/logs', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get logs:', err);
-    return c.json({ code: 500, message: '獲取日誌失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get logs' }, 500);
   }
 });
 
 /**
  * GET /api/v1/admin/stats/models/:model
- * 獲取特定模型的統計
+ * Get statistics for a specific model
  */
 stats.get('/models/:model', async (c) => {
   const model = c.req.param('model');
 
   try {
-    // 從 relay_logs 聚合統計
+    // Aggregate stats from relay_logs
     const result = await c.env.DB.prepare(
       `SELECT 
         COUNT(*) as total_requests,
@@ -163,13 +163,13 @@ stats.get('/models/:model', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get model stats:', err);
-    return c.json({ code: 500, message: '獲取模型統計失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get model statistics' }, 500);
   }
 });
 
 /**
  * GET /api/v1/admin/stats/date-range
- * 獲取日期範圍內的統計
+ * Get statistics within a date range
  */
 stats.get('/date-range', async (c) => {
   const startDate = c.req.query('start_date'); // Unix timestamp
@@ -179,7 +179,7 @@ stats.get('/date-range', async (c) => {
     return c.json(
       {
         code: 400,
-        message: '需要提供 start_date 和 end_date 參數',
+        message: 'start_date and end_date parameters are required',
       },
       400
     );
@@ -246,7 +246,7 @@ stats.get('/date-range', async (c) => {
 
 /**
  * GET /api/v1/admin/stats/today
- * 獲取今日統計
+ * Get today's statistics
  */
 stats.get('/today', async (c) => {
   try {
@@ -296,7 +296,7 @@ stats.get('/today', async (c) => {
 
 /**
  * GET /api/v1/admin/stats/hourly
- * 獲取今日每小時統計
+ * Get today's hourly statistics
  */
 stats.get('/hourly', async (c) => {
   try {
@@ -352,7 +352,7 @@ stats.get('/hourly', async (c) => {
 
 /**
  * GET /api/v1/admin/stats/channels
- * 獲取每個 channel 的統計
+ * Get per-channel statistics
  */
 stats.get('/channels', async (c) => {
   try {
@@ -404,7 +404,7 @@ stats.get('/channels', async (c) => {
 
 /**
  * GET /api/v1/admin/stats/apikeys
- * 獲取每個 API Key 的統計 (from stats_apikey table)
+ * Get per-API-key statistics (from stats_api_key table)
  */
 stats.get('/apikeys', async (c) => {
   try {
@@ -419,7 +419,7 @@ stats.get('/apikeys', async (c) => {
         sa.wait_time,
         sa.request_success,
         sa.request_failed
-      FROM stats_apikey sa
+      FROM stats_api_key sa
       LEFT JOIN api_keys ak ON ak.id = sa.api_key_id
       ORDER BY sa.request_success + sa.request_failed DESC`
     ).all<{
@@ -455,7 +455,7 @@ stats.get('/apikeys', async (c) => {
 
 /**
  * POST /api/v1/admin/stats/price-sync
- * 手動觸發價格同步
+ * Manually trigger price sync
  */
 stats.post('/price-sync', async (c) => {
   try {
@@ -472,7 +472,7 @@ stats.post('/price-sync', async (c) => {
 
 /**
  * GET /api/v1/admin/stats/model-list
- * 獲取所有模型價格列表
+ * Get all model pricing list
  */
 stats.get('/model-list', async (c) => {
   try {

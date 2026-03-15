@@ -20,17 +20,17 @@ export function DashboardPage() {
   return (
     <div class="space-y-6">
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard label="Requests" value={formatNumber(stats?.requests ?? 0)} />
-        <StatsCard label="Total Cost" value={formatCost(stats?.cost ?? 0)} />
+        <StatsCard label="Requests" value={formatNumber(stats?.totalRequests ?? 0)} />
+        <StatsCard label="Total Cost" value={formatCost(stats?.totalCost ?? 0)} />
         <StatsCard
           label="Input Tokens"
-          value={formatTokens(stats?.input_tokens ?? 0)}
-          sub={`Output: ${formatTokens(stats?.output_tokens ?? 0)}`}
+          value={formatTokens(stats?.totalInputTokens ?? 0)}
+          sub={`Output: ${formatTokens(stats?.totalOutputTokens ?? 0)}`}
         />
         <StatsCard
-          label="Cache Read"
-          value={formatTokens(stats?.cache_read_tokens ?? 0)}
-          sub={`Write: ${formatTokens(stats?.cache_write_tokens ?? 0)}`}
+          label="Success"
+          value={formatNumber(stats?.successRequests ?? 0)}
+          sub={`Failed: ${formatNumber(stats?.failedRequests ?? 0)}`}
         />
       </div>
 
@@ -42,12 +42,12 @@ export function DashboardPage() {
             <h3 class="text-sm font-medium text-slate-400 mb-3">Channel Usage</h3>
             <Table
               columns={[
-                { key: 'channel_name', header: 'Channel' },
-                { key: 'requests', header: 'Requests', render: (r) => formatNumber(r.requests) },
-                { key: 'cost', header: 'Cost', render: (r) => formatCost(r.cost) },
+                { key: 'channelName', header: 'Channel' },
+                { key: 'totalRequests', header: 'Requests', render: (r) => formatNumber(r.totalRequests) },
+                { key: 'totalCost', header: 'Cost', render: (r) => formatCost(r.totalCost) },
               ]}
               data={channels.data}
-              keyFn={(r) => r.channel_id}
+              keyFn={(r) => r.channelId}
             />
           </div>
         )}
@@ -56,12 +56,12 @@ export function DashboardPage() {
             <h3 class="text-sm font-medium text-slate-400 mb-3">API Key Usage</h3>
             <Table
               columns={[
-                { key: 'api_key_name', header: 'API Key' },
-                { key: 'requests', header: 'Requests', render: (r) => formatNumber(r.requests) },
-                { key: 'cost', header: 'Cost', render: (r) => formatCost(r.cost) },
+                { key: 'apiKeyName', header: 'API Key' },
+                { key: 'requestSuccess', header: 'Requests', render: (r) => formatNumber(r.requestSuccess + r.requestFailed) },
+                { key: 'inputCost', header: 'Cost', render: (r) => formatCost(r.inputCost + r.outputCost) },
               ]}
               data={apikeys.data}
-              keyFn={(r) => r.api_key_id}
+              keyFn={(r) => r.apiKeyId}
             />
           </div>
         )}

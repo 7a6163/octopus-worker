@@ -1,11 +1,11 @@
 /**
- * RoundRobin 負載平衡器
- * 對應原始 Go 專案的 internal/balancer/roundrobin.go
+ * RoundRobin load balancer
+ * Corresponds to internal/balancer/roundrobin.go in the original Go project
  *
- * 功能：
- * - 使用 Durable Objects 維護分散式計數器
- * - 輪詢選擇 GroupItem
- * - 支援排除失敗的項目
+ * Features:
+ * - Uses Durable Objects to maintain a distributed counter
+ * - Round-robin selection of GroupItems
+ * - Supports excluding failed items
  */
 
 import type { Bindings } from '@/types';
@@ -14,7 +14,7 @@ import type { Balancer } from './interface';
 import { filterAvailableItems } from './interface';
 
 /**
- * RoundRobin 負載平衡器
+ * RoundRobin load balancer
  */
 export class RoundRobinBalancer implements Balancer {
   private env: Bindings;
@@ -24,27 +24,27 @@ export class RoundRobinBalancer implements Balancer {
   }
 
   /**
-   * 選擇下一個 GroupItem（輪詢）
+   * Select the next GroupItem (round robin)
    */
   async selectNext(group: Group, excludeIds?: Set<number>): Promise<GroupItem | null> {
-    // 過濾可用的項目
+    // Filter available items
     const availableItems = filterAvailableItems(group.items, excludeIds);
 
     if (availableItems.length === 0) {
       return null;
     }
 
-    // 如果只有一個項目，直接返回
+    // If only one item, return it directly
     if (availableItems.length === 1) {
       return availableItems[0]!;
     }
 
-    // 獲取 Durable Object 實例
+    // Get Durable Object instance
     const doId = this.env.ROUND_ROBIN_COUNTER.idFromName(`group-${group.id}`);
     const doStub = this.env.ROUND_ROBIN_COUNTER.get(doId);
 
     try {
-      // 調用 DO 獲取下一個索引
+      // Call DO to get the next index
       const response = await doStub.fetch(
         `https://internal/next?groupId=${group.id}&itemCount=${availableItems.length}`
       );
@@ -56,18 +56,18 @@ export class RoundRobinBalancer implements Balancer {
       const data = await response.json<{ nextIndex: number }>();
       const nextIndex = data.nextIndex;
 
-      // 返回選中的項目
+      // Return the selected item
       return availableItems[nextIndex] || availableItems[0]!;
     } catch (err) {
       console.error('RoundRobinBalancer: Failed to get next index from DO:', err);
-      // 降級：本地隨機選擇
+      // Fallback: local random selection
       const randomIndex = Math.floor(Math.random() * availableItems.length);
       return availableItems[randomIndex]!;
     }
   }
 
   /**
-   * 重置計數器
+   * Reset counter
    */
   async reset(groupId: number): Promise<void> {
     try {

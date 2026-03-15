@@ -1,5 +1,5 @@
 /**
- * API Keys 管理 API
+ * API Keys management API
  */
 
 import { zValidator } from '@hono/zod-validator';
@@ -12,10 +12,10 @@ import type { Bindings, Variables } from '@/types';
 const apikeys = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**
- * 生成隨機 API Key
+ * Generate a random API key
  */
 function generateAPIKey(): string {
-  const prefix = 'sk-';
+  const prefix = 'oct-';
   const length = 48;
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const array = new Uint8Array(length);
@@ -30,9 +30,9 @@ function generateAPIKey(): string {
 const createAPIKeySchema = z.object({
   name: z.string().min(1).max(100),
   enabled: z.boolean().default(true),
-  expireAt: z.number().int().min(0).default(0), // 0 表示永不過期
-  maxCost: z.number().min(0).default(0), // 0 表示無限制
-  supportedModels: z.string().default(''), // 空字串表示支援所有模型
+  expireAt: z.number().int().min(0).default(0), // 0 means never expires
+  maxCost: z.number().min(0).default(0), // 0 means unlimited
+  supportedModels: z.string().default(''), // empty string means all models supported
 });
 
 const updateAPIKeySchema = z.object({
@@ -45,12 +45,12 @@ const updateAPIKeySchema = z.object({
 
 /**
  * GET /api/v1/admin/apikeys
- * 列出所有 API keys
+ * List all API keys
  */
 apikeys.get('/', async (c) => {
   try {
     const keys = await getAllAPIKeys(c.env.DB);
-    // 不返回完整的 API key，只返回前綴用於識別
+    // Don't return the full API key; only return the prefix for identification
     const safeKeys = keys.map((key) => ({
       ...key,
       apiKey: `${key.apiKey.substring(0, 10)}...`,
@@ -61,26 +61,26 @@ apikeys.get('/', async (c) => {
     });
   } catch (err) {
     console.error('Failed to list API keys:', err);
-    return c.json({ code: 500, message: '獲取 API keys 列表失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to list API keys' }, 500);
   }
 });
 
 /**
  * GET /api/v1/admin/apikeys/:id
- * 獲取指定 API key
+ * Get a specific API key
  */
 apikeys.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的 API key ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid API key ID' }, 400);
   }
 
   try {
     const key = await getAPIKeyById(c.env.DB, id);
     if (!key) {
-      return c.json({ code: 404, message: 'API key 不存在' }, 404);
+      return c.json({ code: 404, message: 'API key not found' }, 404);
     }
-    // 隱藏完整的 API key
+    // Mask the full API key
     return c.json({
       code: 200,
       data: {
@@ -90,19 +90,19 @@ apikeys.get('/:id', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get API key:', err);
-    return c.json({ code: 500, message: '獲取 API key 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get API key' }, 500);
   }
 });
 
 /**
  * POST /api/v1/admin/apikeys
- * 創建新 API key
+ * Create a new API key
  */
 apikeys.post('/', zValidator('json', createAPIKeySchema), async (c) => {
   const body = c.req.valid('json');
 
   try {
-    // 生成新的 API key
+    // Generate a new API key
     const apiKey = generateAPIKey();
 
     const keyId = await createAPIKey(c.env.DB, {
@@ -116,38 +116,38 @@ apikeys.post('/', zValidator('json', createAPIKeySchema), async (c) => {
 
     return c.json({
       code: 200,
-      message: 'API key 創建成功',
+      message: 'API key created successfully',
       data: {
         id: keyId,
-        apiKey, // 只在創建時返回完整的 key
+        apiKey, // Only return the full key at creation time
       },
     });
   } catch (err) {
     console.error('Failed to create API key:', err);
-    return c.json({ code: 500, message: '創建 API key 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to create API key' }, 500);
   }
 });
 
 /**
  * PUT /api/v1/admin/apikeys/:id
- * 更新 API key
+ * Update an API key
  */
 apikeys.put('/:id', zValidator('json', updateAPIKeySchema), async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的 API key ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid API key ID' }, 400);
   }
 
   const body = c.req.valid('json');
 
   try {
-    // 檢查 API key 是否存在
+    // Check if API key exists
     const existing = await getAPIKeyById(c.env.DB, id);
     if (!existing) {
-      return c.json({ code: 404, message: 'API key 不存在' }, 404);
+      return c.json({ code: 404, message: 'API key not found' }, 404);
     }
 
-    // 更新 API Key（合併現有資料和更新資料）
+    // Update API key (merge existing data with update data)
     const { updateAPIKey } = await import('@/services/db/apikey');
     await updateAPIKey(c.env.DB, {
       id,
@@ -160,48 +160,48 @@ apikeys.put('/:id', zValidator('json', updateAPIKeySchema), async (c) => {
         body.supportedModels !== undefined ? body.supportedModels : existing.supportedModels,
     });
 
-    // 清除快取
+    // Invalidate cache
     await invalidateAPIKeyCache(c.env.CACHE, existing.apiKey);
 
     return c.json({
       code: 200,
-      message: 'API key 更新成功',
+      message: 'API key updated successfully',
     });
   } catch (err) {
     console.error('Failed to update API key:', err);
-    return c.json({ code: 500, message: '更新 API key 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to update API key' }, 500);
   }
 });
 
 /**
  * DELETE /api/v1/admin/apikeys/:id
- * 刪除 API key
+ * Delete an API key
  */
 apikeys.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的 API key ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid API key ID' }, 400);
   }
 
   try {
-    // 檢查 API key 是否存在
+    // Check if API key exists
     const existing = await getAPIKeyById(c.env.DB, id);
     if (!existing) {
-      return c.json({ code: 404, message: 'API key 不存在' }, 404);
+      return c.json({ code: 404, message: 'API key not found' }, 404);
     }
 
     await deleteAPIKey(c.env.DB, id);
 
-    // 清除快取
+    // Invalidate cache
     await invalidateAPIKeyCache(c.env.CACHE, existing.apiKey);
 
     return c.json({
       code: 200,
-      message: 'API key 刪除成功',
+      message: 'API key deleted successfully',
     });
   } catch (err) {
     console.error('Failed to delete API key:', err);
-    return c.json({ code: 500, message: '刪除 API key 失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to delete API key' }, 500);
   }
 });
 

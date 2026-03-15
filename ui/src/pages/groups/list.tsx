@@ -47,7 +47,7 @@ export function GroupListPage() {
             header: 'Items',
             render: (r) => <span>{r.items?.length ?? 0}</span>,
           },
-          { key: 'match_regex', header: 'Regex', render: (r) => <span class="text-xs text-slate-400">{r.match_regex || '--'}</span> },
+          { key: 'matchRegex', header: 'Regex', render: (r) => <span class="text-xs text-slate-400">{r.matchRegex || '--'}</span> },
           {
             key: 'actions',
             header: '',

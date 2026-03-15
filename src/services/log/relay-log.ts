@@ -1,42 +1,42 @@
 /**
- * RelayLog 記錄服務
- * 對應原始 Go 專案的 internal/service/relay_log.go
+ * RelayLog recording service
+ * Corresponds to internal/service/relay_log.go in the original Go project
  *
- * 功能：
- * - 記錄請求日誌到 D1
- * - 記錄 Token 使用量、費用、時間
- * - 支援批次寫入
+ * Features:
+ * - Record request logs to D1
+ * - Track token usage, cost, and timing
+ * - Batch write support
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
 import type { InternalLLMResponse } from '@/types/llm';
 
 /**
- * RelayLog 介面
+ * RelayLog interface
  */
 export interface RelayLogEntry {
-  time: number; // Unix timestamp (秒)
-  requestModelName: string; // 請求的模型名稱
-  channelId: number; // 使用的渠道 ID
-  channelName: string; // 渠道名稱
-  channelKeyId: number; // 使用的 Key ID
-  apiKeyId: number; // 請求的 API Key ID
-  promptTokens: number; // Prompt Token 數量
-  completionTokens: number; // Completion Token 數量
-  cacheReadTokens: number; // Cache Read Token 數量
-  cacheCreationTokens: number; // Cache Creation Token 數量
-  inputCost: number; // Input 費用
-  outputCost: number; // Output 費用
-  cacheReadCost: number; // Cache Read 費用
-  cacheCreationCost: number; // Cache Creation 費用
-  totalCost: number; // 總費用
-  waitTime: number; // 等待時間（毫秒）
-  success: boolean; // 是否成功
-  errorMessage: string; // 錯誤訊息
+  time: number; // Unix timestamp (seconds)
+  requestModelName: string; // Requested model name
+  channelId: number; // Channel ID used
+  channelName: string; // Channel name
+  channelKeyId: number; // Key ID used
+  apiKeyId: number; // API Key ID of the request
+  promptTokens: number; // Prompt token count
+  completionTokens: number; // Completion token count
+  cacheReadTokens: number; // Cache read token count
+  cacheCreationTokens: number; // Cache creation token count
+  inputCost: number; // Input cost
+  outputCost: number; // Output cost
+  cacheReadCost: number; // Cache read cost
+  cacheCreationCost: number; // Cache creation cost
+  totalCost: number; // Total cost
+  waitTime: number; // Wait time (milliseconds)
+  success: boolean; // Whether successful
+  errorMessage: string; // Error message
 }
 
 /**
- * 創建 RelayLog
+ * Create a RelayLog entry
  */
 export async function createRelayLog(db: D1Database, log: RelayLogEntry): Promise<void> {
   try {
@@ -72,12 +72,12 @@ export async function createRelayLog(db: D1Database, log: RelayLogEntry): Promis
       .run();
   } catch (err) {
     console.error('Failed to create relay log:', err);
-    // 不拋出錯誤，避免影響主流程
+    // Don't throw to avoid disrupting the main flow
   }
 }
 
 /**
- * 批次創建 RelayLogs
+ * Batch create RelayLog entries
  */
 export async function batchCreateRelayLogs(db: D1Database, logs: RelayLogEntry[]): Promise<void> {
   if (logs.length === 0) {
@@ -124,7 +124,7 @@ export async function batchCreateRelayLogs(db: D1Database, logs: RelayLogEntry[]
 }
 
 /**
- * 從 InternalLLMResponse 提取 Token 使用量
+ * Extract token usage from InternalLLMResponse
  */
 export function extractTokenUsage(response: InternalLLMResponse | null): {
   promptTokens: number;
@@ -150,9 +150,9 @@ export function extractTokenUsage(response: InternalLLMResponse | null): {
 }
 
 /**
- * 清理過期日誌
+ * Clean up expired logs
  * @param db D1 Database
- * @param keepDays 保留天數
+ * @param keepDays Number of days to retain
  */
 export async function cleanupOldLogs(db: D1Database, keepDays: number): Promise<number> {
   const cutoffTime = Math.floor(Date.now() / 1000) - keepDays * 86400;

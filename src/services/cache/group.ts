@@ -168,7 +168,7 @@ export async function invalidateGroupCache(
 export async function warmupGroupCache(kv: KVNamespace, db: D1Database): Promise<number> {
   const allGroups = await db
     .prepare(
-      `SELECT id, name, mode, match_regex, first_token_timeout
+      `SELECT id, name, mode, match_regex, first_token_time_out
        FROM groups
        ORDER BY id ASC`
     )
@@ -177,7 +177,7 @@ export async function warmupGroupCache(kv: KVNamespace, db: D1Database): Promise
       name: string;
       mode: number;
       match_regex: string;
-      first_token_timeout: number;
+      first_token_time_out: number;
     }>();
 
   if (!allGroups.results || allGroups.results.length === 0) {
@@ -203,7 +203,7 @@ export async function warmupGroupCache(kv: KVNamespace, db: D1Database): Promise
       name: groupData.name,
       mode: groupData.mode,
       matchRegex: groupData.match_regex,
-      firstTokenTimeOut: groupData.first_token_timeout,
+      firstTokenTimeOut: groupData.first_token_time_out,
       items: (itemsResult.results || []).map((item: any) => ({
         id: item.id,
         groupId: item.group_id,

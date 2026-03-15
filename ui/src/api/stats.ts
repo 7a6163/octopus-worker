@@ -1,44 +1,56 @@
 import { api } from './client';
 
 export interface TodayStats {
-  requests: number;
-  tokens: number;
-  cost: number;
-  input_tokens: number;
-  output_tokens: number;
-  cache_read_tokens: number;
-  cache_write_tokens: number;
+  todayStart: number;
+  totalRequests: number;
+  successRequests: number;
+  failedRequests: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number;
+  avgUseTime: number;
 }
 
 export interface HourlyStat {
   hour: number;
-  requests: number;
-  tokens: number;
-  cost: number;
+  totalRequests: number;
+  successRequests: number;
+  failedRequests: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number;
 }
 
 export interface ChannelStat {
-  channel_id: number;
-  channel_name: string;
-  requests: number;
-  tokens: number;
-  cost: number;
+  channelId: number;
+  channelName: string;
+  totalRequests: number;
+  successRequests: number;
+  failedRequests: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number;
+  avgUseTime: number;
 }
 
 export interface ApiKeyStat {
-  api_key_id: number;
-  api_key_name: string;
-  requests: number;
-  tokens: number;
-  cost: number;
+  apiKeyId: number;
+  apiKeyName: string | null;
+  inputToken: number;
+  outputToken: number;
+  inputCost: number;
+  outputCost: number;
+  waitTime: number;
+  requestSuccess: number;
+  requestFailed: number;
 }
 
 export interface ModelPrice {
   name: string;
   input: number;
   output: number;
-  cache_read: number;
-  cache_write: number;
+  cacheRead: number;
+  cacheWrite: number;
 }
 
 export function getToday(): Promise<TodayStats> {

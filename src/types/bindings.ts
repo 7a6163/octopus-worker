@@ -1,8 +1,8 @@
 /**
- * Cloudflare Workers 環境綁定
+ * Cloudflare Workers environment bindings
  */
 export interface Bindings {
-  // D1 資料庫
+  // D1 Database
   DB: D1Database;
 
   // Workers KV
@@ -12,23 +12,23 @@ export interface Bindings {
   STATS_AGGREGATOR: DurableObjectNamespace;
   ROUND_ROBIN_COUNTER: DurableObjectNamespace;
 
-  // 環境變數
+  // Environment variables
   JWT_SECRET?: string;
   ENVIRONMENT?: 'development' | 'production';
 }
 
 /**
- * Hono Context 擴展
+ * Hono Context extensions
  */
 export interface Variables {
-  // 認證相關
+  // Authentication
   userId?: number;
   username?: string;
   apiKeyId?: number;
   apiKeyName?: string;
   supportedModels?: string;
 
-  // 請求資訊
+  // Request info
   requestId?: string;
   startTime?: number;
 }

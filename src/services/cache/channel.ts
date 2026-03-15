@@ -1,34 +1,34 @@
 /**
- * Channel 快取層
- * 使用 Workers KV 進行快取
+ * Channel cache layer
+ * Uses Workers KV for caching
  *
- * 快取策略：
- * - TTL: 5 分鐘（300 秒）
- * - Write-Through: 寫入時同時更新快取
- * - 快取穿透保護：快取 null 結果（TTL: 1 分鐘）
+ * Cache strategy:
+ * - TTL: 5 minutes (300 seconds)
+ * - Write-through: update cache on write
+ * - Cache penetration protection: cache null results (TTL: 1 minute)
  */
 
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { getChannel, getChannelsByIds } from '@/services/db/channel';
 import type { Channel } from '@/types/channel';
 
-const CACHE_TTL = 300; // 5 分鐘
-const NULL_CACHE_TTL = 60; // 1 分鐘（用於快取不存在的記錄）
+const CACHE_TTL = 300; // 5 minutes
+const NULL_CACHE_TTL = 60; // 1 minute (for caching non-existent records)
 
 /**
- * 快取 Key 前綴
+ * Cache key prefix
  */
 const KEY_PREFIX = 'channel:';
 
 /**
- * 生成快取 Key
+ * Generate a cache key
  */
 function getCacheKey(id: number): string {
   return `${KEY_PREFIX}${id}`;
 }
 
 /**
- * 從快取獲取 Channel（如果快取未命中則從 DB 讀取）
+ * Get a Channel from cache (falls back to DB on cache miss)
  */
 export async function getCachedChannel(
   kv: KVNamespace,
@@ -37,32 +37,32 @@ export async function getCachedChannel(
 ): Promise<Channel | null> {
   const cacheKey = getCacheKey(id);
 
-  // 1. 嘗試從快取讀取
+  // 1. Try reading from cache
   const cached = await kv.get(cacheKey, 'text');
   if (cached !== null) {
-    // 快取命中
+    // Cache hit
     if (cached === '__NULL__') {
-      // 快取的 null 結果
+      // Cached null result
       return null;
     }
     try {
       return JSON.parse(cached) as Channel;
     } catch (err) {
       console.error('Failed to parse cached channel:', err);
-      // 快取解析失敗，刪除快取並繼續從 DB 讀取
+      // Cache parse failed; delete and fall back to DB
       await kv.delete(cacheKey);
     }
   }
 
-  // 2. 快取未命中，從 DB 讀取
+  // 2. Cache miss; read from DB
   const channel = await getChannel(db, id);
 
-  // 3. 寫入快取
+  // 3. Write to cache
   if (channel === null) {
-    // 快取 null 結果（防止快取穿透）
+    // Cache null result (prevent cache penetration)
     await kv.put(cacheKey, '__NULL__', { expirationTtl: NULL_CACHE_TTL });
   } else {
-    // 快取正常結果
+    // Cache the result
     await kv.put(cacheKey, JSON.stringify(channel), { expirationTtl: CACHE_TTL });
   }
 
@@ -70,7 +70,7 @@ export async function getCachedChannel(
 }
 
 /**
- * 批次從快取獲取 Channels
+ * Batch fetch Channels from cache
  */
 export async function getCachedChannels(
   kv: KVNamespace,
@@ -84,7 +84,7 @@ export async function getCachedChannels(
   const result = new Map<number, Channel>();
   const missingIds: number[] = [];
 
-  // 1. 批次從快取讀取
+  // 1. Batch read from cache
   for (const id of ids) {
     const cacheKey = getCacheKey(id);
     const cached = await kv.get(cacheKey, 'text');
@@ -103,18 +103,18 @@ export async function getCachedChannels(
     }
   }
 
-  // 2. 從 DB 讀取快取未命中的記錄
+  // 2. Fetch cache-missed records from DB
   if (missingIds.length > 0) {
     const channels = await getChannelsByIds(db, missingIds);
 
-    // 3. 寫入快取並添加到結果
+    // 3. Write to cache and add to results
     for (const [id, channel] of channels) {
       result.set(id, channel);
       const cacheKey = getCacheKey(id);
       await kv.put(cacheKey, JSON.stringify(channel), { expirationTtl: CACHE_TTL });
     }
 
-    // 4. 快取不存在的記錄
+    // 4. Cache non-existent records
     for (const id of missingIds) {
       if (!channels.has(id)) {
         const cacheKey = getCacheKey(id);
@@ -127,7 +127,7 @@ export async function getCachedChannels(
 }
 
 /**
- * 使快取失效
+ * Invalidate cache
  */
 export async function invalidateChannelCache(kv: KVNamespace, id: number): Promise<void> {
   const cacheKey = getCacheKey(id);
@@ -135,7 +135,7 @@ export async function invalidateChannelCache(kv: KVNamespace, id: number): Promi
 }
 
 /**
- * 使多個快取失效
+ * Invalidate multiple cache entries
  */
 export async function invalidateChannelCaches(kv: KVNamespace, ids: number[]): Promise<void> {
   const deletePromises = ids.map((id) => {

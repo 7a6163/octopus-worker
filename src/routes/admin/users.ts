@@ -1,5 +1,5 @@
 /**
- * Users 管理 API
+ * Users management API
  */
 
 import { zValidator } from '@hono/zod-validator';
@@ -35,7 +35,7 @@ const updateUserSchema = z.object({
 
 /**
  * GET /api/v1/admin/users
- * 列出所有使用者
+ * List all users
  */
 users.get('/', async (c) => {
   try {
@@ -46,26 +46,26 @@ users.get('/', async (c) => {
     });
   } catch (err) {
     console.error('Failed to list users:', err);
-    return c.json({ code: 500, message: '獲取使用者列表失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to list users' }, 500);
   }
 });
 
 /**
  * GET /api/v1/admin/users/:id
- * 獲取指定使用者
+ * Get a specific user
  */
 users.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的使用者 ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid user ID' }, 400);
   }
 
   try {
     const user = await getUserById(c.env.DB, id);
     if (!user) {
-      return c.json({ code: 404, message: '使用者不存在' }, 404);
+      return c.json({ code: 404, message: 'User not found' }, 404);
     }
-    // 不返回密碼
+    // Don't return the password
     const { password, ...safeUser } = user;
     return c.json({
       code: 200,
@@ -73,31 +73,31 @@ users.get('/:id', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get user:', err);
-    return c.json({ code: 500, message: '獲取使用者失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get user' }, 500);
   }
 });
 
 /**
  * POST /api/v1/admin/users
- * 創建新使用者
+ * Create a new user
  */
 users.post('/', zValidator('json', createUserSchema), async (c) => {
   const body = c.req.valid('json');
 
   try {
-    // 檢查使用者名稱是否已存在
+    // Check if username already exists
     const existing = await getUserByUsername(c.env.DB, body.username);
     if (existing) {
       return c.json(
         {
           code: 400,
-          message: `使用者名稱 ${body.username} 已存在`,
+          message: `Username "${body.username}" already exists`,
         },
         400
       );
     }
 
-    // 雜湊密碼
+    // Hash password
     const hashedPassword = await hashPassword(body.password);
 
     const userId = await createUser(c.env.DB, {
@@ -109,49 +109,49 @@ users.post('/', zValidator('json', createUserSchema), async (c) => {
 
     return c.json({
       code: 200,
-      message: '使用者創建成功',
+      message: 'User created successfully',
       data: { id: userId },
     });
   } catch (err) {
     console.error('Failed to create user:', err);
-    return c.json({ code: 500, message: '創建使用者失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to create user' }, 500);
   }
 });
 
 /**
  * PUT /api/v1/admin/users/:id
- * 更新使用者
+ * Update a user
  */
 users.put('/:id', zValidator('json', updateUserSchema), async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的使用者 ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid user ID' }, 400);
   }
 
   const body = c.req.valid('json');
 
   try {
-    // 檢查使用者是否存在
+    // Check if user exists
     const existing = await getUserById(c.env.DB, id);
     if (!existing) {
-      return c.json({ code: 404, message: '使用者不存在' }, 404);
+      return c.json({ code: 404, message: 'User not found' }, 404);
     }
 
-    // 如果更新使用者名稱，檢查是否已被其他使用者使用
+    // If updating username, check if it's already taken by another user
     if (body.username && body.username !== existing.username) {
       const conflict = await getUserByUsername(c.env.DB, body.username);
       if (conflict && conflict.id !== id) {
         return c.json(
           {
             code: 400,
-            message: `使用者名稱 ${body.username} 已被使用`,
+            message: `Username "${body.username}" is already taken`,
           },
           400
         );
       }
     }
 
-    // 準備更新數據
+    // Prepare update data
     const updateData = {
       id,
       username: body.username || existing.username,
@@ -160,7 +160,7 @@ users.put('/:id', zValidator('json', updateUserSchema), async (c) => {
       enabled: body.enabled !== undefined ? body.enabled : existing.enabled,
     };
 
-    // 如果更新密碼，雜湊新密碼
+    // If updating password, hash the new password
     if (body.password) {
       updateData.password = await hashPassword(body.password);
     }
@@ -169,39 +169,39 @@ users.put('/:id', zValidator('json', updateUserSchema), async (c) => {
 
     return c.json({
       code: 200,
-      message: '使用者更新成功',
+      message: 'User updated successfully',
     });
   } catch (err) {
     console.error('Failed to update user:', err);
-    return c.json({ code: 500, message: '更新使用者失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to update user' }, 500);
   }
 });
 
 /**
  * DELETE /api/v1/admin/users/:id
- * 刪除使用者
+ * Delete a user
  */
 users.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'), 10);
   if (Number.isNaN(id)) {
-    return c.json({ code: 400, message: '無效的使用者 ID' }, 400);
+    return c.json({ code: 400, message: 'Invalid user ID' }, 400);
   }
 
   try {
-    // 檢查使用者是否存在
+    // Check if user exists
     const existing = await getUserById(c.env.DB, id);
     if (!existing) {
-      return c.json({ code: 404, message: '使用者不存在' }, 404);
+      return c.json({ code: 404, message: 'User not found' }, 404);
     }
 
-    // 防止刪除最後一個管理員
+    // Prevent deleting the last admin
     const allUsers = await getAllUsers(c.env.DB);
     const adminCount = allUsers.filter((u) => u.role === 'admin').length;
     if (existing.role === 'admin' && adminCount <= 1) {
       return c.json(
         {
           code: 400,
-          message: '無法刪除最後一個管理員帳號',
+          message: 'Cannot delete the last admin account',
         },
         400
       );
@@ -211,11 +211,11 @@ users.delete('/:id', async (c) => {
 
     return c.json({
       code: 200,
-      message: '使用者刪除成功',
+      message: 'User deleted successfully',
     });
   } catch (err) {
     console.error('Failed to delete user:', err);
-    return c.json({ code: 500, message: '刪除使用者失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to delete user' }, 500);
   }
 });
 

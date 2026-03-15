@@ -49,8 +49,8 @@ export function ModelPricesPage() {
           { key: 'name', header: 'Model' },
           { key: 'input', header: 'Input ($/M)', render: (r) => <span>${r.input}</span> },
           { key: 'output', header: 'Output ($/M)', render: (r) => <span>${r.output}</span> },
-          { key: 'cache_read', header: 'Cache Read', render: (r) => <span>{r.cache_read ? `$${r.cache_read}` : '--'}</span> },
-          { key: 'cache_write', header: 'Cache Write', render: (r) => <span>{r.cache_write ? `$${r.cache_write}` : '--'}</span> },
+          { key: 'cacheRead', header: 'Cache Read', render: (r) => <span>{r.cacheRead ? `$${r.cacheRead}` : '--'}</span> },
+          { key: 'cacheWrite', header: 'Cache Write', render: (r) => <span>{r.cacheWrite ? `$${r.cacheWrite}` : '--'}</span> },
         ]}
         data={filtered}
         keyFn={(r) => r.name}

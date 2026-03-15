@@ -1,73 +1,73 @@
 /**
- * 重試策略
- * 對應原始 Go 專案的 internal/relay/retry.go
+ * Retry strategy
+ * Corresponds to internal/relay/retry.go in the original Go project
  *
- * 功能：
- * - 指數退避（Exponential Backoff）
- * - 自適應重試（基於錯誤類型）
- * - 熔斷機制（Circuit Breaker）- 基礎版本
+ * Features:
+ * - Exponential Backoff
+ * - Adaptive retry (based on error type)
+ * - Circuit Breaker - basic version
  */
 
 /**
- * 錯誤類型分類
+ * Error type classification
  */
 export enum ErrorType {
-  NetworkError = 'network_error', // 網路錯誤（可重試）
-  RateLimitError = 'rate_limit_error', // 429 錯誤（需要退避）
-  ServerError = 'server_error', // 5xx 錯誤（可重試）
-  ClientError = 'client_error', // 4xx 錯誤（不可重試）
-  TimeoutError = 'timeout_error', // 超時錯誤（可重試）
-  AuthError = 'auth_error', // 認證錯誤（不可重試）
-  Unknown = 'unknown', // 未知錯誤
+  NetworkError = 'network_error', // Network error (retryable)
+  RateLimitError = 'rate_limit_error', // 429 error (needs backoff)
+  ServerError = 'server_error', // 5xx error (retryable)
+  ClientError = 'client_error', // 4xx error (not retryable)
+  TimeoutError = 'timeout_error', // Timeout error (retryable)
+  AuthError = 'auth_error', // Auth error (not retryable)
+  Unknown = 'unknown', // Unknown error
 }
 
 /**
- * 重試配置
+ * Retry configuration
  */
 export interface RetryConfig {
-  maxRetries: number; // 最大重試次數
-  initialDelayMs: number; // 初始延遲（毫秒）
-  maxDelayMs: number; // 最大延遲（毫秒）
-  multiplier: number; // 延遲倍數
-  jitter: boolean; // 是否添加隨機抖動
+  maxRetries: number; // Maximum retry attempts
+  initialDelayMs: number; // Initial delay (milliseconds)
+  maxDelayMs: number; // Maximum delay (milliseconds)
+  multiplier: number; // Delay multiplier
+  jitter: boolean; // Whether to add random jitter
 }
 
 /**
- * 預設重試配置
+ * Default retry configuration
  */
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxRetries: 3,
-  initialDelayMs: 1000, // 1 秒
-  maxDelayMs: 30000, // 30 秒
-  multiplier: 2, // 指數倍數
-  jitter: true, // 啟用抖動
+  initialDelayMs: 1000, // 1 second
+  maxDelayMs: 30000, // 30 seconds
+  multiplier: 2, // Exponential multiplier
+  jitter: true, // Enable jitter
 };
 
 /**
- * 根據 HTTP 狀態碼判斷錯誤類型
+ * Classify error type based on HTTP status code
  */
 export function classifyError(statusCode: number, errorMessage: string): ErrorType {
-  // 429 限流錯誤
+  // 429 rate limit error
   if (statusCode === 429) {
     return ErrorType.RateLimitError;
   }
 
-  // 401/403 認證錯誤
+  // 401/403 auth error
   if (statusCode === 401 || statusCode === 403) {
     return ErrorType.AuthError;
   }
 
-  // 4xx 客戶端錯誤
+  // 4xx client error
   if (statusCode >= 400 && statusCode < 500) {
     return ErrorType.ClientError;
   }
 
-  // 5xx 伺服器錯誤
+  // 5xx server error
   if (statusCode >= 500 && statusCode < 600) {
     return ErrorType.ServerError;
   }
 
-  // 網路錯誤（根據錯誤訊息判斷）
+  // Network error (determined by error message)
   const networkKeywords = ['timeout', 'network', 'connection', 'ECONNREFUSED', 'ETIMEDOUT'];
   if (networkKeywords.some((keyword) => errorMessage.toLowerCase().includes(keyword))) {
     if (errorMessage.toLowerCase().includes('timeout')) {
@@ -80,7 +80,7 @@ export function classifyError(statusCode: number, errorMessage: string): ErrorTy
 }
 
 /**
- * 判斷錯誤是否可重試
+ * Determine whether an error is retryable
  */
 export function isRetryableError(errorType: ErrorType): boolean {
   switch (errorType) {
@@ -95,7 +95,7 @@ export function isRetryableError(errorType: ErrorType): boolean {
       return false;
 
     case ErrorType.Unknown:
-      // 未知錯誤預設可重試
+      // Unknown errors are retryable by default
       return true;
 
     default:
@@ -104,19 +104,19 @@ export function isRetryableError(errorType: ErrorType): boolean {
 }
 
 /**
- * 計算重試延遲（指數退避 + 抖動）
+ * Calculate retry delay (exponential backoff + jitter)
  */
 export function calculateRetryDelay(
   attempt: number,
   config: RetryConfig = DEFAULT_RETRY_CONFIG
 ): number {
-  // 指數退避: delay = initialDelay * (multiplier ^ attempt)
+  // Exponential backoff: delay = initialDelay * (multiplier ^ attempt)
   let delay = config.initialDelayMs * config.multiplier ** attempt;
 
-  // 限制最大延遲
+  // Cap at maximum delay
   delay = Math.min(delay, config.maxDelayMs);
 
-  // 添加隨機抖動（± 25%）
+  // Add random jitter (+/- 25%)
   if (config.jitter) {
     const jitterRange = delay * 0.25;
     const jitter = Math.random() * jitterRange * 2 - jitterRange;
@@ -127,14 +127,14 @@ export function calculateRetryDelay(
 }
 
 /**
- * 非同步延遲函數
+ * Async delay function
  */
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
- * 重試策略類
+ * Retry strategy class
  */
 export class RetryStrategy {
   private config: RetryConfig;
@@ -144,27 +144,27 @@ export class RetryStrategy {
   }
 
   /**
-   * 判斷是否應該重試
+   * Determine whether to retry
    */
   shouldRetry(attempt: number, errorType: ErrorType): { retry: boolean; delayMs: number } {
-    // 超過最大重試次數
+    // Exceeded maximum retry attempts
     if (attempt >= this.config.maxRetries) {
       return { retry: false, delayMs: 0 };
     }
 
-    // 根據錯誤類型判斷
+    // Determine by error type
     if (!isRetryableError(errorType)) {
       return { retry: false, delayMs: 0 };
     }
 
-    // 計算延遲
+    // Calculate delay
     const delayMs = calculateRetryDelay(attempt, this.config);
 
     return { retry: true, delayMs };
   }
 
   /**
-   * 執行重試（帶延遲）
+   * Execute with retry (with delay)
    */
   async executeWithRetry<T>(
     fn: () => Promise<T>,
@@ -178,26 +178,26 @@ export class RetryStrategy {
       } catch (err) {
         lastError = err as Error;
 
-        // 調用錯誤回調
+        // Invoke error callback
         if (onError) {
           onError(attempt, lastError);
         }
 
-        // 最後一次嘗試，不再重試
+        // Last attempt, do not retry
         if (attempt === this.config.maxRetries) {
           break;
         }
 
-        // 判斷錯誤類型
+        // Classify error type
         const errorType = classifyError((err as any).statusCode || 0, lastError.message);
 
-        // 判斷是否重試
+        // Determine whether to retry
         const { retry, delayMs } = this.shouldRetry(attempt, errorType);
         if (!retry) {
           break;
         }
 
-        // 延遲後重試
+        // Delay before retrying
         console.log(`Retry attempt ${attempt + 1}/${this.config.maxRetries} after ${delayMs}ms`);
         await delay(delayMs);
       }

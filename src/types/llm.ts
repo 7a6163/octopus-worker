@@ -1,6 +1,6 @@
 /**
- * LLM 相關類型定義
- * 對應原始 Go 專案的 internal/transformer/model/model.go
+ * LLM-related type definitions
+ * Corresponds to internal/transformer/model/model.go in the original Go project
  */
 
 export interface InternalLLMRequest {
@@ -25,7 +25,7 @@ export interface InternalLLMRequest {
   user?: string;
   rawAPIFormat?: string;
 
-  // Embedding API 參數（與 Messages 互斥）
+  // Embedding API parameters (mutually exclusive with Messages)
   embeddingInput?: EmbeddingInput;
   embeddingDimensions?: number;
   embeddingEncodingFormat?: string;
@@ -129,7 +129,7 @@ export interface InternalLLMResponse {
   usage?: Usage;
   error?: ErrorDetail;
 
-  // Embedding API 回應（與 Choices 互斥）
+  // Embedding API response (mutually exclusive with Choices)
   embeddingData?: EmbeddingObject[];
 }
 
@@ -168,18 +168,18 @@ export interface ErrorDetail {
   code?: string;
 }
 
-// ==================== Embedding 類型 ====================
+// ==================== Embedding Types ====================
 
 /**
- * Embedding 輸入：支援單一字串或字串陣列
+ * Embedding input: supports a single string or string array
  */
 export type EmbeddingInput = string | string[];
 
 /**
- * Embedding 回應中的單個 embedding 物件
+ * Single embedding object in the embedding response
  */
 export interface EmbeddingObject {
   object: 'embedding';
   index: number;
-  embedding: number[] | string; // float array 或 base64 string
+  embedding: number[] | string; // float array or base64 string
 }

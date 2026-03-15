@@ -1,5 +1,5 @@
 /**
- * Admin API 路由匯總
+ * Admin API route aggregation
  */
 
 import { Hono } from 'hono';
@@ -19,13 +19,13 @@ const admin = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 // Rate limiting on login endpoint only (per IP, 20 req/min)
 admin.use('/auth/login', loginRateLimit());
 
-// 認證路由（不需要 JWT）
+// Auth routes (no JWT required)
 admin.route('/auth', authRoutes);
 
-// 以下路由需要 JWT 認證
+// Routes below require JWT authentication
 admin.use('/*', jwtAuth());
 
-// 健康檢查
+// Health check
 admin.get('/health', (c) => {
   return c.json({
     code: 200,
@@ -40,7 +40,7 @@ admin.get('/health', (c) => {
   });
 });
 
-// 管理路由
+// Admin routes
 admin.route('/channels', channelRoutes);
 admin.route('/groups', groupRoutes);
 admin.route('/apikeys', apikeyRoutes);

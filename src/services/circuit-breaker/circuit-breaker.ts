@@ -1,30 +1,30 @@
 /**
- * Circuit Breaker（熔斷器）
- * 對應原始 Go 專案的 internal/relay/balancer/circuit.go
+ * Circuit Breaker
+ * Corresponds to internal/relay/balancer/circuit.go in the original Go project
  *
- * 三態設計：
- * - Closed：正常通行，記錄連續失敗次數
- * - Open：熔斷中，拒絕所有請求直到冷卻結束
- * - HalfOpen：冷卻結束，允許單個試探請求
+ * Three-state design:
+ * - Closed: Normal operation, tracks consecutive failure count
+ * - Open: Tripped, rejects all requests until cooldown expires
+ * - HalfOpen: Cooldown expired, allows a single probe request
  *
- * 特性：
- * - 全域 Map 儲存，按 channelID:keyID:modelName 隔離
- * - 指數退避冷卻：baseCooldown * 2^(tripCount-1)，上限 maxCooldown
- * - 設定驅動：threshold/cooldown/maxCooldown 從 DB Settings 讀取
+ * Features:
+ * - Global Map storage, isolated by channelID:keyID:modelName
+ * - Exponential backoff cooldown: baseCooldown * 2^(tripCount-1), capped at maxCooldown
+ * - Config-driven: threshold/cooldown/maxCooldown read from DB Settings
  *
- * 注意：Workers isolate 內的全域變數會在同一 isolate 生命週期內持續存在，
- * 與 Go 的 sync.Map 行為相似。isolate 重啟時狀態重置，這是可接受的。
+ * Note: Global variables within a Workers isolate persist for the isolate's lifetime,
+ * similar to Go's sync.Map. State resets on isolate restart, which is acceptable.
  */
 
-// ==================== 狀態定義 ====================
+// ==================== State definitions ====================
 
 export enum CircuitState {
-  Closed = 0, // 正常通行
-  Open = 1, // 熔斷中，拒絕所有請求
-  HalfOpen = 2, // 半開，僅允許單個試探請求
+  Closed = 0, // Normal operation
+  Open = 1, // Tripped, rejects all requests
+  HalfOpen = 2, // Half-open, allows only a single probe request
 }
 
-// ==================== 設定常數 ====================
+// ==================== Config constants ====================
 
 export const SETTING_KEY_CIRCUIT_BREAKER_THRESHOLD = 'circuit_breaker_threshold';
 export const SETTING_KEY_CIRCUIT_BREAKER_COOLDOWN = 'circuit_breaker_cooldown';
@@ -34,24 +34,24 @@ const DEFAULT_THRESHOLD = 5;
 const DEFAULT_COOLDOWN_SEC = 60;
 const DEFAULT_MAX_COOLDOWN_SEC = 600;
 
-// ==================== 條目型別 ====================
+// ==================== Entry type ====================
 
 interface CircuitEntry {
   state: CircuitState;
   consecutiveFailures: number;
   lastFailureTime: number; // ms timestamp
-  tripCount: number; // 累計熔斷觸發次數（用於指數退避）
+  tripCount: number; // Cumulative trip count (for exponential backoff)
 }
 
-// ==================== 全域儲存 ====================
+// ==================== Global storage ====================
 
 const globalBreaker = new Map<string, CircuitEntry>();
 
-// ==================== 設定 ====================
+// ==================== Settings ====================
 
 /**
- * Circuit Breaker 運行時設定
- * 由 relay handler 在請求開始時從 DB/KV 讀取並注入
+ * Circuit Breaker runtime settings
+ * Injected by the relay handler at request start, read from DB/KV
  */
 export interface CircuitBreakerSettings {
   readonly threshold: number;
@@ -65,13 +65,13 @@ const DEFAULT_SETTINGS: CircuitBreakerSettings = {
   maxCooldownSec: DEFAULT_MAX_COOLDOWN_SEC,
 };
 
-// ==================== Key 生成 ====================
+// ==================== Key generation ====================
 
 function circuitKey(channelId: number, keyId: number, modelName: string): string {
   return `${channelId}:${keyId}:${modelName}`;
 }
 
-// ==================== 條目管理 ====================
+// ==================== Entry management ====================
 
 function getOrCreateEntry(key: string): CircuitEntry {
   const existing = globalBreaker.get(key);
@@ -89,11 +89,11 @@ function getOrCreateEntry(key: string): CircuitEntry {
   return entry;
 }
 
-// ==================== 冷卻時間計算 ====================
+// ==================== Cooldown calculation ====================
 
 /**
- * 計算當前冷卻時間（帶指數退避）
- * cooldown = baseCooldown * 2^(tripCount-1)，不超過 maxCooldown
+ * Calculate current cooldown duration (with exponential backoff)
+ * cooldown = baseCooldown * 2^(tripCount-1), capped at maxCooldown
  */
 export function getCooldownMs(
   tripCount: number,
@@ -103,14 +103,14 @@ export function getCooldownMs(
 
   let cooldown = cooldownSec;
   if (tripCount > 1) {
-    const shift = Math.min(tripCount - 1, 20); // 防止溢出
+    const shift = Math.min(tripCount - 1, 20); // Prevent overflow
     cooldown = cooldownSec * (1 << shift);
   }
 
   return Math.min(cooldown, maxCooldownSec) * 1000;
 }
 
-// ==================== 核心 API ====================
+// ==================== Core API ====================
 
 export interface TrippedResult {
   readonly tripped: boolean;
@@ -118,9 +118,9 @@ export interface TrippedResult {
 }
 
 /**
- * 檢查通道是否處於熔斷狀態
+ * Check whether a channel is in tripped (open) state
  *
- * @returns tripped=true 表示該通道應被跳過，remainingMs 為剩餘冷卻毫秒數
+ * @returns tripped=true means this channel should be skipped; remainingMs is the remaining cooldown in milliseconds
  */
 export function isTripped(
   channelId: number,
@@ -144,18 +144,18 @@ export function isTripped(
       const elapsed = Date.now() - entry.lastFailureTime;
 
       if (elapsed >= cooldownMs) {
-        // 冷卻結束，轉為 HalfOpen
+        // Cooldown expired, transition to HalfOpen
         entry.state = CircuitState.HalfOpen;
         console.log(`circuit breaker [${key}] Open -> HalfOpen (cooldown ${cooldownMs}ms elapsed)`);
         return { tripped: false, remainingMs: 0 };
       }
 
-      // 仍在冷卻中
+      // Still cooling down
       return { tripped: true, remainingMs: cooldownMs - elapsed };
     }
 
     case CircuitState.HalfOpen:
-      // 已有試探請求在進行中，拒絕其他請求
+      // A probe request is already in progress, reject other requests
       return { tripped: true, remainingMs: 0 };
 
     default:
@@ -164,7 +164,7 @@ export function isTripped(
 }
 
 /**
- * 記錄成功，重置熔斷器狀態
+ * Record success, reset circuit breaker state
  */
 export function recordSuccess(channelId: number, keyId: number, modelName: string): void {
   const key = circuitKey(channelId, keyId, modelName);
@@ -178,14 +178,14 @@ export function recordSuccess(channelId: number, keyId: number, modelName: strin
     console.log(`circuit breaker [${key}] HalfOpen -> Closed (probe succeeded)`);
   }
 
-  // 重置全部狀態
+  // Reset all state
   entry.state = CircuitState.Closed;
   entry.consecutiveFailures = 0;
   entry.tripCount = 0;
 }
 
 /**
- * 記錄失敗，可能觸發熔斷
+ * Record failure, may trigger circuit breaker
  */
 export function recordFailure(
   channelId: number,
@@ -215,10 +215,10 @@ export function recordFailure(
     }
 
     case CircuitState.HalfOpen: {
-      // 試探失敗，重新進入 Open 狀態，tripCount 遞增（冷卻時間翻倍）
+      // Probe failed, re-enter Open state, increment tripCount (doubles cooldown)
       entry.state = CircuitState.Open;
       entry.tripCount++;
-      entry.consecutiveFailures = 0; // 重新開始計數
+      entry.consecutiveFailures = 0; // Reset failure count
       const cooldownMs = getCooldownMs(entry.tripCount, settings);
       console.warn(
         `circuit breaker [${key}] HalfOpen -> Open ` +
@@ -228,30 +228,30 @@ export function recordFailure(
     }
 
     case CircuitState.Open:
-      // 理論上不應該在 Open 狀態下接收到失敗記錄（請求應被拒絕），
-      // 但為安全起見仍更新失敗時間
+      // In theory, failures should not be recorded in Open state (requests should be rejected),
+      // but we update the failure time as a safety measure
       break;
   }
 }
 
-// ==================== 輔助 API ====================
+// ==================== Helper API ====================
 
 /**
- * 取得全域熔斷器條目數（用於監控/除錯）
+ * Get global circuit breaker entry count (for monitoring/debugging)
  */
 export function getEntryCount(): number {
   return globalBreaker.size;
 }
 
 /**
- * 清除所有熔斷器狀態（用於測試）
+ * Clear all circuit breaker state (for testing)
  */
 export function clearAll(): void {
   globalBreaker.clear();
 }
 
 /**
- * 取得特定條目的狀態（用於除錯）
+ * Get the state of a specific entry (for debugging)
  */
 export function getEntryState(
   channelId: number,
@@ -263,6 +263,6 @@ export function getEntryState(
   if (!entry) {
     return undefined;
   }
-  // 回傳副本避免外部修改
+  // Return a copy to prevent external mutation
   return { ...entry };
 }

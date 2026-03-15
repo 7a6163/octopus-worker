@@ -1,5 +1,5 @@
 /**
- * Password 雜湊服務測試
+ * Password hashing service tests
  */
 
 import { describe, expect, it } from 'vitest';

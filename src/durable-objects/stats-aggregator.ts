@@ -1,11 +1,11 @@
 /**
  * StatsAggregator Durable Object
- * 對應原始 Go 專案的統計聚合功能
+ * Corresponds to the stats aggregation feature in the original Go project
  *
- * 功能：
- * - 即時聚合統計數據（記憶體中）
- * - 定期持久化到 D1
- * - 支援多維度統計
+ * Features:
+ * - Real-time stats aggregation (in-memory)
+ * - Periodic persistence to D1
+ * - Multi-dimensional statistics
  */
 
 import { DurableObject } from 'cloudflare:workers';
@@ -35,7 +35,7 @@ export class StatsAggregator extends DurableObject {
   };
 
   /**
-   * 初始化
+   * Initialize
    */
   async initialize() {
     const stored = await this.ctx.storage.get<StatsData>('stats');
@@ -45,7 +45,7 @@ export class StatsAggregator extends DurableObject {
   }
 
   /**
-   * 記錄統計
+   * Record stats
    */
   async recordStats(data: {
     success: boolean;
@@ -53,12 +53,12 @@ export class StatsAggregator extends DurableObject {
     completionTokens: number;
     cost: number;
   }): Promise<void> {
-    // 確保已初始化
+    // Ensure initialized
     if (this.stats.totalRequests === 0 && this.stats.lastUpdated === 0) {
       await this.initialize();
     }
 
-    // 更新統計
+    // Update stats
     this.stats.totalRequests++;
     if (data.success) {
       this.stats.successRequests++;
@@ -70,14 +70,14 @@ export class StatsAggregator extends DurableObject {
     this.stats.totalCost += data.cost;
     this.stats.lastUpdated = Date.now();
 
-    // 定期持久化（每 100 次請求）
+    // Persist periodically (every 100 requests)
     if (this.stats.totalRequests % 100 === 0) {
       await this.persist();
     }
   }
 
   /**
-   * 獲取統計
+   * Get stats
    */
   async getStats(): Promise<StatsData> {
     if (this.stats.totalRequests === 0 && this.stats.lastUpdated === 0) {
@@ -87,14 +87,14 @@ export class StatsAggregator extends DurableObject {
   }
 
   /**
-   * 持久化統計
+   * Persist stats
    */
   async persist(): Promise<void> {
     await this.ctx.storage.put('stats', this.stats);
   }
 
   /**
-   * 重置統計
+   * Reset stats
    */
   async reset(): Promise<void> {
     this.stats = {
@@ -110,7 +110,7 @@ export class StatsAggregator extends DurableObject {
   }
 
   /**
-   * HTTP API 處理器
+   * HTTP API handler
    */
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);

@@ -1,5 +1,5 @@
 /**
- * User 相關類型定義
+ * User-related type definitions
  */
 
 export interface User {

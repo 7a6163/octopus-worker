@@ -1,5 +1,5 @@
 /**
- * 統一匯出所有類型定義
+ * Unified export of all type definitions
  */
 
 export * from './apikey';

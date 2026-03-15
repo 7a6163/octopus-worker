@@ -20,15 +20,15 @@ export function GroupForm({ group, onClose, onSaved }: GroupFormProps) {
 
   const [name, setName] = useState(group?.name ?? '');
   const [mode, setMode] = useState(group?.mode ?? 1);
-  const [matchRegex, setMatchRegex] = useState(group?.match_regex ?? '');
-  const [firstTokenTimeout, setFirstTokenTimeout] = useState(group?.first_token_timeout ?? 0);
+  const [matchRegex, setMatchRegex] = useState(group?.matchRegex ?? '');
+  const [firstTokenTimeout, setFirstTokenTimeout] = useState(group?.firstTokenTimeOut ?? 0);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const data = { name, mode, match_regex: matchRegex, first_token_timeout: firstTokenTimeout };
+      const data = { name, mode, match_regex: matchRegex, first_token_time_out: firstTokenTimeout };
       if (isEdit) {
         await updateGroup(group.id, data);
         toast.success('Group updated');

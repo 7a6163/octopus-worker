@@ -1,5 +1,5 @@
 /**
- * Setting 相關類型定義
+ * Setting-related type definitions
  */
 
 export interface Setting {

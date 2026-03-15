@@ -1,5 +1,5 @@
 /**
- * Pricing 計算服務測試
+ * Pricing calculation service tests
  */
 
 import { describe, expect, it } from 'vitest';
@@ -41,7 +41,7 @@ describe('Pricing Calculator', () => {
       const pricePerMillion = 0.1;
       const cost = (tokens / 1_000_000) * pricePerMillion;
 
-      expect(cost).toBe(0.01);
+      expect(cost).toBeCloseTo(0.01);
     });
 
     it('should handle cache creation tokens', () => {

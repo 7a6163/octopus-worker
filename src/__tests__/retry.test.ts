@@ -1,5 +1,5 @@
 /**
- * Retry 策略測試
+ * Retry strategy tests
  */
 
 import { describe, expect, it } from 'vitest';

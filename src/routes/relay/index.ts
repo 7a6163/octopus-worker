@@ -1,8 +1,8 @@
 /**
- * Relay API 路由
- * 對應原始 Go 專案的 internal/server/handlers/relay.go
+ * Relay API routes
+ * Corresponds to the original Go project's internal/server/handlers/relay.go
  *
- * 端點：
+ * Endpoints:
  * - POST /v1/chat/completions - OpenAI Chat Completions
  * - POST /v1/responses - OpenAI Responses
  * - POST /v1/messages - Anthropic Messages

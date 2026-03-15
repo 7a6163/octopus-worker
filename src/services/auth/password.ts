@@ -1,12 +1,12 @@
 /**
  * Password hashing utilities
- * 使用 PBKDF2 進行密碼雜湊 (Web Crypto API)
+ * Uses PBKDF2 for password hashing (Web Crypto API)
  */
 
 const encoder = new TextEncoder();
 
 /**
- * 生成隨機 salt
+ * Generate a random salt
  */
 function generateSalt(): string {
   const salt = new Uint8Array(16);
@@ -17,7 +17,7 @@ function generateSalt(): string {
 }
 
 /**
- * 使用 PBKDF2 雜湊密碼
+ * Hash password using PBKDF2
  */
 async function pbkdf2Hash(password: string, salt: string): Promise<string> {
   const passwordBuffer = encoder.encode(password);
@@ -44,8 +44,8 @@ async function pbkdf2Hash(password: string, salt: string): Promise<string> {
 }
 
 /**
- * 雜湊密碼
- * 返回格式: salt:hash
+ * Hash a password
+ * Returns format: salt:hash
  */
 export async function hashPassword(password: string): Promise<string> {
   const salt = generateSalt();
@@ -54,7 +54,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 /**
- * 驗證密碼
+ * Verify a password
  */
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
   const [salt, hash] = hashedPassword.split(':');

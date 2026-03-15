@@ -1,5 +1,5 @@
 /**
- * Settings 管理 API
+ * Settings management API
  */
 
 import { Hono } from 'hono';
@@ -10,7 +10,7 @@ const settings = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**
  * GET /api/v1/admin/settings
- * 列出所有設定
+ * List all settings
  */
 settings.get('/', async (c) => {
   try {
@@ -24,7 +24,7 @@ settings.get('/', async (c) => {
 
 /**
  * PUT /api/v1/admin/settings/:key
- * 更新設定值
+ * Update a setting value
  */
 settings.put('/:key', async (c) => {
   const key = c.req.param('key');

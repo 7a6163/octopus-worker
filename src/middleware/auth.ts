@@ -1,5 +1,5 @@
 /**
- * 認證中間件
+ * Authentication middleware
  */
 
 import { createMiddleware } from 'hono/factory';
@@ -7,8 +7,8 @@ import { getCachedAPIKey } from '@/services/cache/apikey';
 import type { Bindings, Variables } from '@/types';
 
 /**
- * API Key 認證中間件
- * 用於 Relay API (/v1/*)
+ * API Key authentication middleware
+ * Used for Relay API (/v1/*)
  */
 export const apiKeyAuth = () => {
   return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {
@@ -26,7 +26,7 @@ export const apiKeyAuth = () => {
       );
     }
 
-    // 格式: Bearer sk-octopus-xxx
+    // Format: Bearer sk-octopus-xxx
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0] !== 'Bearer') {
       return c.json(
@@ -53,7 +53,7 @@ export const apiKeyAuth = () => {
       );
     }
 
-    // 從快取或資料庫驗證 API Key
+    // Validate API Key from cache or database
     const keyInfo = await getCachedAPIKey(c.env.CACHE, c.env.DB, apiKey);
 
     if (!keyInfo) {
@@ -68,7 +68,7 @@ export const apiKeyAuth = () => {
       );
     }
 
-    // 設定上下文
+    // Set context
     c.set('apiKeyId', keyInfo.id);
     c.set('supportedModels', keyInfo.supportedModels);
 
@@ -77,8 +77,8 @@ export const apiKeyAuth = () => {
 };
 
 /**
- * JWT 認證中間件
- * 用於管理 API (/api/v1/*)
+ * JWT authentication middleware
+ * Used for Admin API (/api/v1/*)
  */
 export const jwtAuth = () => {
   return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {
@@ -88,7 +88,7 @@ export const jwtAuth = () => {
       return c.json(
         {
           code: 401,
-          message: '未授權：缺少認證 token',
+          message: 'Unauthorized: missing authentication token',
         },
         401
       );
@@ -99,7 +99,7 @@ export const jwtAuth = () => {
       return c.json(
         {
           code: 401,
-          message: '未授權：無效的 token 格式',
+          message: 'Unauthorized: invalid token format',
         },
         401
       );
@@ -110,13 +110,13 @@ export const jwtAuth = () => {
       return c.json(
         {
           code: 401,
-          message: '未授權：無效的 token',
+          message: 'Unauthorized: invalid token',
         },
         401
       );
     }
 
-    // 驗證 JWT
+    // Verify JWT
     try {
       const { verifyJWT } = await import('@/services/auth/jwt');
       const jwtSecret = c.env.JWT_SECRET;
@@ -125,7 +125,7 @@ export const jwtAuth = () => {
       }
       const payload = await verifyJWT(token, jwtSecret);
 
-      // 設定上下文
+      // Set context
       c.set('userId', payload.userId);
       c.set('username', payload.username);
 
@@ -134,7 +134,7 @@ export const jwtAuth = () => {
       return c.json(
         {
           code: 401,
-          message: `未授權：${(err as Error).message}`,
+          message: `Unauthorized: ${(err as Error).message}`,
         },
         401
       );
@@ -143,6 +143,6 @@ export const jwtAuth = () => {
 };
 
 /**
- * 管理員認證（JWT）
+ * Admin authentication (JWT)
  */
 export const adminAuth = jwtAuth;

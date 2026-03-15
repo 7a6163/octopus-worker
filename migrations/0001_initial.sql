@@ -9,12 +9,12 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- 初始管理員帳號 (用戶名: admin, 密碼: admin)
--- 密碼已使用 bcrypt hash
+-- 密碼使用 PBKDF2-SHA256 hash (salt:hash 格式)
 INSERT OR IGNORE INTO users (id, username, password)
 VALUES (
   1,
   'admin',
-  '$2a$10$N.KqZ9j1gWvTHoB1m2V8V.LYD9ZqN8Vb5VY7Qq9K0bKvF5n5b0Z7i'
+  '7a5c1e1ea4e5b134570557602d46a912:2dfd0ec28a030f45367bb960e094a8d8be1ad3084748704dd4e1cd55d031f22e'
 );
 
 -- ==================== 渠道表 ====================
@@ -128,15 +128,29 @@ CREATE TABLE IF NOT EXISTS relay_logs (
   request_model_name TEXT NOT NULL,
   channel_id INTEGER,
   channel_name TEXT,
+  channel_key_id INTEGER,
+  api_key_id INTEGER,
   actual_model_name TEXT,
   input_tokens INTEGER DEFAULT 0,
   output_tokens INTEGER DEFAULT 0,
+  prompt_tokens INTEGER DEFAULT 0,
+  completion_tokens INTEGER DEFAULT 0,
+  cache_read_tokens INTEGER DEFAULT 0,
+  cache_creation_tokens INTEGER DEFAULT 0,
   ftut INTEGER DEFAULT 0,
   use_time INTEGER DEFAULT 0,
+  wait_time INTEGER DEFAULT 0,
   cost REAL DEFAULT 0,
+  input_cost REAL DEFAULT 0,
+  output_cost REAL DEFAULT 0,
+  cache_read_cost REAL DEFAULT 0,
+  cache_creation_cost REAL DEFAULT 0,
+  total_cost REAL DEFAULT 0,
+  success INTEGER DEFAULT 1,
   request_content TEXT,
   response_content TEXT,
   error TEXT,
+  error_message TEXT DEFAULT '',
   attempts TEXT DEFAULT '[]',
   total_attempts INTEGER DEFAULT 0,
   successful_round INTEGER DEFAULT 0
@@ -145,6 +159,8 @@ CREATE TABLE IF NOT EXISTS relay_logs (
 CREATE INDEX IF NOT EXISTS idx_relay_logs_time ON relay_logs(time);
 CREATE INDEX IF NOT EXISTS idx_relay_logs_channel_id ON relay_logs(channel_id);
 CREATE INDEX IF NOT EXISTS idx_relay_logs_request_model ON relay_logs(request_model_name);
+CREATE INDEX IF NOT EXISTS idx_relay_logs_api_key_id ON relay_logs(api_key_id);
+CREATE INDEX IF NOT EXISTS idx_relay_logs_success ON relay_logs(success);
 
 -- ==================== 統計表 ====================
 

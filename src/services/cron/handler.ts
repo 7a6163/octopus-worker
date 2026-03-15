@@ -1,10 +1,10 @@
 /**
- * Cron 定時任務處理器
+ * Cron scheduled task handler
  *
- * 任務：
- * - 每 10 分鐘：統計聚合
- * - 每小時：同步模型價格
- * - 每天：清理過期日誌
+ * Tasks:
+ * - Every 10 minutes: stats aggregation
+ * - Every hour: sync model pricing
+ * - Every day: clean up expired logs
  */
 
 import { cleanupOldLogs } from '@/services/log/relay-log';
@@ -13,7 +13,7 @@ import { syncModelPricing } from '@/services/sync/price-sync';
 import type { Bindings } from '@/types';
 
 /**
- * 處理定時任務
+ * Handle scheduled tasks
  */
 export async function handleScheduled(
   event: ScheduledEvent,
@@ -24,17 +24,17 @@ export async function handleScheduled(
   console.log(`Cron triggered: ${cron}`);
 
   try {
-    // 每 10 分鐘：觸發統計聚合持久化
+    // Every 10 minutes: trigger stats aggregation persistence
     if (cron === '*/10 * * * *') {
       await persistStats(env);
     }
 
-    // 每小時：同步模型價格 + 渠道模型同步
+    // Every hour: sync model pricing + channel model sync
     if (cron === '0 * * * *') {
       await runHourlySync(env);
     }
 
-    // 每天：清理過期日誌
+    // Every day: clean up expired logs
     if (cron === '0 0 * * *') {
       await cleanupLogs(env);
     }
@@ -44,11 +44,11 @@ export async function handleScheduled(
 }
 
 /**
- * 持久化統計數據
+ * Persist stats data
  */
 async function persistStats(env: Bindings): Promise<void> {
   try {
-    // 觸發 StatsAggregator DO 持久化
+    // Trigger StatsAggregator DO persistence
     const doId = env.STATS_AGGREGATOR.idFromName('global');
     const doStub = env.STATS_AGGREGATOR.get(doId);
 
@@ -86,12 +86,12 @@ async function runHourlySync(env: Bindings): Promise<void> {
 }
 
 /**
- * 清理過期日誌
+ * Clean up expired logs
  */
 async function cleanupLogs(env: Bindings): Promise<void> {
   try {
-    // 從 settings 讀取保留期限（預設 7 天）
-    const keepDays = 7; // TODO: 從 settings 讀取
+    // Read retention period from settings (default 7 days)
+    const keepDays = 7; // TODO: read from settings
 
     const deletedCount = await cleanupOldLogs(env.DB, keepDays);
     console.log(`Cleaned up ${deletedCount} old logs`);
