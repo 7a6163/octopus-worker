@@ -1,10 +1,10 @@
 /**
- * OpenAI Responses API Outbound 轉換器
- * 對應原始 Go 專案的 internal/transformer/outbound/openai/response.go
+ * OpenAI Responses API outbound transformer
+ * Corresponds to internal/transformer/outbound/openai/response.go in the original Go project
  *
- * 負責：
- * - 將內部 Chat Completions 請求轉為 Responses API 格式發送給上游
- * - 將上游 Responses API 回應/流轉回內部 Chat Completions 格式
+ * Responsibilities:
+ * - Convert internal Chat Completions requests to Responses API format for upstream
+ * - Convert upstream Responses API responses/streams back to internal Chat Completions format
  */
 
 import type {
@@ -17,7 +17,7 @@ import type {
 } from '@/types/llm';
 import type { OutboundTransformer } from '../interface';
 
-// ==================== Responses API 型別 ====================
+// ==================== Responses API types ====================
 
 interface ResponsesRequest {
   model: string;
@@ -119,7 +119,7 @@ interface ResponsesStreamEvent {
   summary_index?: number;
 }
 
-// ==================== Outbound 轉換器 ====================
+// ==================== Outbound transformer ====================
 
 export class OpenAIResponseOutbound implements OutboundTransformer {
   private streamId = '';
@@ -285,7 +285,7 @@ export class OpenAIResponseOutbound implements OutboundTransformer {
   }
 }
 
-// ==================== 請求轉換 ====================
+// ==================== Request conversion ====================
 
 function convertToResponsesRequest(req: InternalLLMRequest): ResponsesRequest {
   const result: ResponsesRequest = {
@@ -418,7 +418,7 @@ function convertMessageToResponsesItems(msg: Message): ResponsesItem[] {
   }
 }
 
-// ==================== 回應轉換 ====================
+// ==================== Response conversion ====================
 
 function convertToInternalResponse(resp: ResponsesResponse): InternalLLMResponse {
   const result: InternalLLMResponse = {

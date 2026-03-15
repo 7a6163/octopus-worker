@@ -1,11 +1,11 @@
 /**
- * Gemini Outbound 轉換器
- * 將內部 LLM 格式轉換為 Google Gemini API 格式
+ * Gemini outbound transformer
+ * Converts internal LLM format to Google Gemini API format
  *
- * API 特性：
- * - 認證使用 query parameter (?key=)，不使用 header
- * - 端點格式：/models/{model}:generateContent 或 :streamGenerateContent
- * - system/developer 訊息放入 systemInstruction
+ * API characteristics:
+ * - Authentication uses query parameter (?key=), not headers
+ * - Endpoint format: /models/{model}:generateContent or :streamGenerateContent
+ * - system/developer messages go into systemInstruction
  */
 
 import type {
@@ -17,7 +17,7 @@ import type {
 } from '@/types/llm';
 import type { OutboundTransformer } from '../interface';
 
-// ==================== Gemini API 類型定義 ====================
+// ==================== Gemini API type definitions ====================
 
 interface GeminiRequest {
   contents: GeminiContent[];
@@ -83,7 +83,7 @@ interface GeminiUsageMetadata {
   thoughtsTokenCount?: number;
 }
 
-// ==================== 常量 ====================
+// ==================== Constants ====================
 
 const REASONING_BUDGET: Record<string, number> = {
   low: 1024,
@@ -99,7 +99,7 @@ const FINISH_REASON_MAP: Record<string, string> = {
   OTHER: 'stop',
 };
 
-// ==================== 主要轉換器類別 ====================
+// ==================== Main transformer class ====================
 
 export class GeminiOutbound implements OutboundTransformer {
   private streamId = '';
@@ -113,7 +113,7 @@ export class GeminiOutbound implements OutboundTransformer {
     const geminiReq = buildGeminiRequest(request);
     const modelName = normalizeModelName(request.model);
 
-    // 構建 URL：/models/{model}:generateContent 或 :streamGenerateContent
+    // Build URL: /models/{model}:generateContent or :streamGenerateContent
     const cleanBase = baseUrl.replace(/\/$/, '');
     const method = request.stream ? 'streamGenerateContent' : 'generateContent';
     const streamParam = request.stream ? '?alt=sse' : '';
@@ -222,14 +222,14 @@ export class GeminiOutbound implements OutboundTransformer {
   }
 }
 
-// ==================== 請求構建 ====================
+// ==================== Request building ====================
 
 function buildGeminiRequest(req: InternalLLMRequest): GeminiRequest {
   const result: GeminiRequest = {
     contents: [],
   };
 
-  // 分離 system 訊息與其他訊息
+  // Separate system messages from other messages
   const systemParts: GeminiPart[] = [];
   const contents: GeminiContent[] = [];
 
@@ -475,7 +475,7 @@ function convertToolChoice(choice: {
   }
 }
 
-// ==================== 回應轉換 ====================
+// ==================== Response conversion ====================
 
 function convertGeminiResponse(geminiResp: GeminiResponse): InternalLLMResponse {
   const candidate = geminiResp.candidates?.[0];
@@ -582,7 +582,7 @@ function extractParts(content: GeminiContent | undefined): ExtractedParts {
   return result;
 }
 
-// ==================== 工具函數 ====================
+// ==================== Utility functions ====================
 
 function normalizeModelName(model: string): string {
   return model.startsWith('models/') ? model.slice(7) : model;

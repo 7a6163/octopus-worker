@@ -1,5 +1,5 @@
 /**
- * API Key 相關類型定義
+ * API Key related type definitions
  */
 
 export interface APIKey {

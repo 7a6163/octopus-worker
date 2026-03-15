@@ -1,44 +1,44 @@
 /**
- * Group 快取層
- * 使用 Workers KV 進行快取
+ * Group cache layer
+ * Uses Workers KV for caching
  *
- * 快取策略：
- * - 按模型名稱索引（支援正則表達式匹配）
- * - TTL: 5 分鐘（300 秒）
- * - Write-Through: 寫入時同時更新快取
- * - 快取穿透保護：快取 null 結果（TTL: 1 分鐘）
+ * Cache strategy:
+ * - Indexed by model name (with regex matching support)
+ * - TTL: 5 minutes (300 seconds)
+ * - Write-through: update cache on write
+ * - Cache penetration protection: cache null results (TTL: 1 minute)
  */
 
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { getGroupById, getGroupByModel } from '@/services/db/group';
 import type { Group } from '@/types/group';
 
-const CACHE_TTL = 300; // 5 分鐘
-const NULL_CACHE_TTL = 60; // 1 分鐘（用於快取不存在的記錄）
+const CACHE_TTL = 300; // 5 minutes
+const NULL_CACHE_TTL = 60; // 1 minute (for caching non-existent records)
 
 /**
- * 快取 Key 前綴
+ * Cache key prefixes
  */
-const KEY_PREFIX_MODEL = 'group:model:'; // 按模型名稱索引
-const KEY_PREFIX_ID = 'group:id:'; // 按 ID 索引
+const KEY_PREFIX_MODEL = 'group:model:'; // Indexed by model name
+const KEY_PREFIX_ID = 'group:id:'; // Indexed by ID
 
 /**
- * 生成模型名稱快取 Key
+ * Generate a cache key by model name
  */
 function getModelCacheKey(modelName: string): string {
   return `${KEY_PREFIX_MODEL}${modelName}`;
 }
 
 /**
- * 生成 ID 快取 Key
+ * Generate a cache key by ID
  */
 function getIdCacheKey(id: number): string {
   return `${KEY_PREFIX_ID}${id}`;
 }
 
 /**
- * 從快取獲取 Group（按模型名稱）
- * 如果快取未命中則從 DB 讀取
+ * Get a Group from cache by model name
+ * Falls back to DB on cache miss
  */
 export async function getCachedGroupByModel(
   kv: KVNamespace,
@@ -47,32 +47,32 @@ export async function getCachedGroupByModel(
 ): Promise<Group | null> {
   const cacheKey = getModelCacheKey(modelName);
 
-  // 1. 嘗試從快取讀取
+  // 1. Try reading from cache
   const cached = await kv.get(cacheKey, 'text');
   if (cached !== null) {
-    // 快取命中
+    // Cache hit
     if (cached === '__NULL__') {
-      // 快取的 null 結果
+      // Cached null result
       return null;
     }
     try {
       return JSON.parse(cached) as Group;
     } catch (err) {
       console.error('Failed to parse cached group:', err);
-      // 快取解析失敗，刪除快取並繼續從 DB 讀取
+      // Cache parse failed; delete and fall back to DB
       await kv.delete(cacheKey);
     }
   }
 
-  // 2. 快取未命中，從 DB 讀取
+  // 2. Cache miss; read from DB
   const group = await getGroupByModel(db, modelName);
 
-  // 3. 寫入快取
+  // 3. Write to cache
   if (group === null) {
-    // 快取 null 結果（防止快取穿透）
+    // Cache null result (prevent cache penetration)
     await kv.put(cacheKey, '__NULL__', { expirationTtl: NULL_CACHE_TTL });
   } else {
-    // 快取正常結果（按模型名稱和 ID 雙重索引）
+    // Cache result (dual-indexed by model name and ID)
     await Promise.all([
       kv.put(cacheKey, JSON.stringify(group), { expirationTtl: CACHE_TTL }),
       kv.put(getIdCacheKey(group.id), JSON.stringify(group), { expirationTtl: CACHE_TTL }),
@@ -83,7 +83,7 @@ export async function getCachedGroupByModel(
 }
 
 /**
- * 從快取獲取 Group（按 ID）
+ * Get a Group from cache by ID
  */
 export async function getCachedGroupById(
   kv: KVNamespace,
@@ -92,10 +92,10 @@ export async function getCachedGroupById(
 ): Promise<Group | null> {
   const cacheKey = getIdCacheKey(id);
 
-  // 1. 嘗試從快取讀取
+  // 1. Try reading from cache
   const cached = await kv.get(cacheKey, 'text');
   if (cached !== null) {
-    // 快取命中
+    // Cache hit
     if (cached === '__NULL__') {
       return null;
     }
@@ -107,14 +107,14 @@ export async function getCachedGroupById(
     }
   }
 
-  // 2. 快取未命中，從 DB 讀取
+  // 2. Cache miss; read from DB
   const group = await getGroupById(db, id);
 
-  // 3. 寫入快取
+  // 3. Write to cache
   if (group === null) {
     await kv.put(cacheKey, '__NULL__', { expirationTtl: NULL_CACHE_TTL });
   } else {
-    // 雙重索引快取
+    // Dual-indexed cache
     await Promise.all([
       kv.put(cacheKey, JSON.stringify(group), { expirationTtl: CACHE_TTL }),
       kv.put(getModelCacheKey(group.name), JSON.stringify(group), { expirationTtl: CACHE_TTL }),
@@ -125,7 +125,7 @@ export async function getCachedGroupById(
 }
 
 /**
- * 使快取失效（按模型名稱）
+ * Invalidate cache by model name
  */
 export async function invalidateGroupCacheByModel(
   kv: KVNamespace,
@@ -136,7 +136,7 @@ export async function invalidateGroupCacheByModel(
 }
 
 /**
- * 使快取失效（按 ID）
+ * Invalidate cache by ID
  */
 export async function invalidateGroupCacheById(kv: KVNamespace, id: number): Promise<void> {
   const cacheKey = getIdCacheKey(id);
@@ -144,7 +144,7 @@ export async function invalidateGroupCacheById(kv: KVNamespace, id: number): Pro
 }
 
 /**
- * 使 Group 所有快取失效（包含模型名稱和 ID 索引）
+ * Invalidate all cache entries for a Group (both model name and ID indexes)
  */
 export async function invalidateGroupCache(
   kv: KVNamespace,
@@ -163,7 +163,7 @@ export async function invalidateGroupCache(
 }
 
 /**
- * 預熱快取（批次載入所有 Groups）
+ * Warm up cache (batch-load all Groups)
  */
 export async function warmupGroupCache(kv: KVNamespace, db: D1Database): Promise<number> {
   const allGroups = await db
@@ -187,7 +187,7 @@ export async function warmupGroupCache(kv: KVNamespace, db: D1Database): Promise
   const putPromises: Promise<void>[] = [];
 
   for (const groupData of allGroups.results) {
-    // 查詢 GroupItems
+    // Query GroupItems
     const itemsResult = await db
       .prepare(
         `SELECT id, group_id, channel_id, model_name, priority, weight
@@ -214,7 +214,7 @@ export async function warmupGroupCache(kv: KVNamespace, db: D1Database): Promise
       })),
     };
 
-    // 雙重索引快取
+    // Dual-indexed cache
     putPromises.push(
       kv.put(getModelCacheKey(group.name), JSON.stringify(group), { expirationTtl: CACHE_TTL })
     );
@@ -228,13 +228,13 @@ export async function warmupGroupCache(kv: KVNamespace, db: D1Database): Promise
 }
 
 /**
- * 清除所有 Group 快取
+ * Clear all Group cache entries
  */
 export async function clearAllGroupCache(_kv: KVNamespace): Promise<void> {
-  // Workers KV 不支援按前綴批次刪除，需要列出所有 key 再刪除
-  // 由於這是昂貴的操作，建議使用 TTL 自動過期
-  // 這裡提供一個佔位函數，實際使用時可以考慮其他方案
+  // Workers KV does not support prefix-based bulk deletion; all keys must be listed first.
+  // Since this is expensive, prefer letting entries expire via TTL.
+  // This is a placeholder; consider alternative approaches in production.
 
   console.warn('clearAllGroupCache: This operation is expensive and not recommended');
-  // 如果真的需要清除，可以在更新 Group 時手動失效相關快取
+  // If clearing is truly needed, manually invalidate related caches when updating a Group.
 }

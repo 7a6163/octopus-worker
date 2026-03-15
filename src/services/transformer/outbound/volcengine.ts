@@ -1,18 +1,18 @@
 /**
- * Volcengine Outbound 轉換器
- * 字節跳動火山引擎 LLM API — 基於 OpenAI Responses API 的薄封裝
+ * Volcengine outbound transformer
+ * ByteDance Volcengine LLM API — thin wrapper over the OpenAI Responses API
  *
- * 特性：
- * - 委託 OpenAI Response outbound 處理請求/回應轉換
- * - 僅特定模型支援 reasoning（doubao-seed 系列）
- * - 不支援 metadata 參數
+ * Features:
+ * - Delegates request/response conversion to OpenAI Response outbound
+ * - Only specific models support reasoning (doubao-seed series)
+ * - Does not support the metadata parameter
  */
 
 import type { InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
 import type { OutboundTransformer } from '../interface';
 import { OpenAIResponseOutbound } from './openai-response';
 
-/** 支援 reasoning 的模型集合 */
+/** Models that support reasoning */
 const REASONING_MODELS = new Set([
   'doubao-seed-1-8-251228',
   'doubao-seed-1-6-lite-251015',

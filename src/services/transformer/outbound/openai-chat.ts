@@ -109,14 +109,14 @@ export class OpenAIChatOutbound implements OutboundTransformer {
 
       return data;
     } catch (err) {
-      // 解析失敗時返回 null（跳過此事件）
+      // Return null on parse failure (skip this event)
       console.warn('Failed to parse stream event:', text.slice(0, 100), err);
       return null;
     }
   }
 
   /**
-   * 清理輔助欄位（這些欄位僅用於內部處理）
+   * Clean helper fields (these fields are only used for internal processing)
    */
   private cleanHelpFields(request: InternalLLMRequest): InternalLLMRequest {
     const { query, transformerMetadata, ...cleaned } = request;

@@ -147,7 +147,7 @@ export async function invalidateChannelCaches(kv: KVNamespace, ids: number[]): P
 }
 
 /**
- * 預熱快取（批次載入所有啟用的 Channels）
+ * Warm up cache (batch load all enabled Channels)
  */
 export async function warmupChannelCache(kv: KVNamespace, db: D1Database): Promise<number> {
   const allChannels = await db

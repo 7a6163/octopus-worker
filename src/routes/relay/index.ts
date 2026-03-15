@@ -18,18 +18,18 @@ import { relayHandler } from './handler';
 
 const relay = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// ==================== 全域中間件 ====================
+// ==================== Global Middleware ====================
 
-// API Key 認證
+// API key authentication
 relay.use('*', apiKeyAuth());
 
 // Rate limiting (per API key, 600 req/min) — after auth so key is always present
 relay.use('*', relayRateLimit());
 
-// 請求體大小限制（10MB）
+// Request body size limit (10MB)
 relay.use('*', validateBodySize(10 * 1024 * 1024));
 
-// ==================== API 端點 ====================
+// ==================== API Endpoints ====================
 
 /**
  * OpenAI Chat Completions API
@@ -68,7 +68,7 @@ relay.post('/embeddings', requireJson(), (c) => {
  * GET /v1/models
  */
 relay.get('/models', (c) => {
-  // TODO: Phase 2 從資料庫讀取模型列表
+  // TODO: Phase 2 read model list from database
   return c.json({
     object: 'list',
     data: [

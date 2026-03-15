@@ -1,11 +1,11 @@
 /**
- * Anthropic Messages Outbound 轉換器
- * 對應原始 Go 專案的 internal/transformer/outbound/authropic/messages.go
+ * Anthropic Messages outbound transformer
+ * Corresponds to internal/transformer/outbound/anthropic/messages.go in the original Go project
  *
- * 核心功能：
- * 1. OpenAI 格式 → Anthropic 格式轉換
- * 2. 處理 system prompts、tools、thinking 模式
- * 3. SSE 流式回應轉換
+ * Core functionality:
+ * 1. OpenAI format -> Anthropic format conversion
+ * 2. Handle system prompts, tools, and thinking mode
+ * 3. SSE streaming response conversion
  */
 
 import type {
@@ -17,7 +17,7 @@ import type {
 } from '@/types/llm';
 import type { OutboundTransformer } from '../interface';
 
-// ==================== Anthropic API 類型定義 ====================
+// ==================== Anthropic API type definitions ====================
 
 interface AnthropicRequest {
   model: string;
@@ -90,7 +90,7 @@ interface AnthropicResponse {
   };
 }
 
-// ==================== 流式狀態追蹤 ====================
+// ==================== Stream state tracking ====================
 
 interface StreamState {
   streamId: string;
@@ -103,13 +103,13 @@ interface StreamState {
   initialized: boolean;
 }
 
-// ==================== 主要轉換器類別 ====================
+// ==================== Main transformer class ====================
 
 export class AnthropicOutbound implements OutboundTransformer {
   private streamState: StreamState | null = null;
 
   /**
-   * 將內部請求轉換為 Anthropic Messages API 請求
+   * Convert internal request to Anthropic Messages API request
    */
   async transformRequest(
     request: InternalLLMRequest,
@@ -118,18 +118,18 @@ export class AnthropicOutbound implements OutboundTransformer {
   ): Promise<Request> {
     const anthropicReq = this.convertToAnthropicRequest(request);
 
-    // 構建完整 URL
+    // Build full URL
     const url = new URL(baseUrl.replace(/\/$/, ''));
     url.pathname = `${url.pathname}/messages`;
 
-    // 傳遞原始查詢參數
+    // Pass through original query parameters
     if (request.query) {
       for (const [k, v] of request.query.entries()) {
         url.searchParams.set(k, v);
       }
     }
 
-    // 設定 Headers
+    // Set headers
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Anthropic-Version': '2023-06-01',
@@ -150,7 +150,7 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 將 Anthropic 回應轉換為內部格式
+   * Convert Anthropic response to internal format
    */
   async transformResponse(response: Response): Promise<InternalLLMResponse> {
     const text = await response.text();
@@ -172,7 +172,7 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 將 Anthropic SSE 事件轉換為內部格式
+   * Convert Anthropic SSE events to internal format
    */
   async transformStream(eventData: Uint8Array): Promise<InternalLLMResponse | null> {
     const text = new TextDecoder().decode(eventData);
@@ -185,7 +185,7 @@ export class AnthropicOutbound implements OutboundTransformer {
       return { object: '[DONE]', choices: [] };
     }
 
-    // 初始化流式狀態
+    // Initialize stream state
     if (!this.streamState) {
       this.streamState = {
         streamId: '',
@@ -208,10 +208,10 @@ export class AnthropicOutbound implements OutboundTransformer {
     }
   }
 
-  // ==================== 私有輔助方法 ====================
+  // ==================== Private helper methods ====================
 
   /**
-   * 將內部請求轉換為 Anthropic 格式
+   * Convert internal request to Anthropic format
    */
   private convertToAnthropicRequest(req: InternalLLMRequest): AnthropicRequest {
     const result: AnthropicRequest = {
@@ -226,7 +226,7 @@ export class AnthropicOutbound implements OutboundTransformer {
       result.system = systemPrompt;
     }
 
-    // 可選參數
+    // Optional parameters
     if (req.temperature !== undefined) result.temperature = req.temperature;
     if (req.topP !== undefined) result.top_p = req.topP;
     if (req.stream !== undefined) result.stream = req.stream;
@@ -246,7 +246,7 @@ export class AnthropicOutbound implements OutboundTransformer {
       result.stop_sequences = Array.isArray(req.stop) ? req.stop : [req.stop];
     }
 
-    // Thinking 模式
+    // Thinking mode
     if (req.reasoningEffort) {
       result.thinking = {
         type: 'enabled',
@@ -263,16 +263,16 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 解析 max_tokens
+   * Resolve max_tokens
    */
   private resolveMaxTokens(req: InternalLLMRequest): number {
     if (req.maxTokens) return req.maxTokens;
     if (req.maxCompletionTokens) return req.maxCompletionTokens;
-    return 8192; // 預設值
+    return 8192; // Default
   }
 
   /**
-   * 提取 system prompt
+   * Extract system prompt
    */
   private extractSystemPrompt(req: InternalLLMRequest): AnthropicSystemPrompt | undefined {
     const systemMessages = req.messages.filter((m) => m.role === 'system');
@@ -288,16 +288,16 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 轉換訊息陣列
+   * Convert message array
    */
   private convertMessages(req: InternalLLMRequest): AnthropicMessage[] {
     const messages: AnthropicMessage[] = [];
 
     for (const msg of req.messages) {
-      // 跳過 system 訊息（已在 system prompt 處理）
+      // Skip system messages (handled in system prompt)
       if (msg.role === 'system') continue;
 
-      // 轉換 user/assistant 訊息
+      // Convert user/assistant messages
       if (msg.role === 'user') {
         messages.push({
           role: 'user',
@@ -309,7 +309,7 @@ export class AnthropicOutbound implements OutboundTransformer {
           content: this.convertAssistantContent(msg),
         });
       } else if (msg.role === 'tool') {
-        // Tool 回應需要附加到前一個 assistant 訊息或創建新的 user 訊息
+        // Tool responses need to be appended to previous assistant message or create a new user message
         messages.push({
           role: 'user',
           content: [
@@ -328,15 +328,15 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 轉換訊息內容
+   * Convert message content
    */
   private convertMessageContent(msg: Message): AnthropicContent {
-    // 簡單文字
+    // Simple text
     if (msg.content.content && !msg.content.multipleContent) {
       return msg.content.content;
     }
 
-    // 多部分內容
+    // Multi-part content
     if (msg.content.multipleContent) {
       const blocks: AnthropicContentBlock[] = [];
 
@@ -348,7 +348,7 @@ export class AnthropicOutbound implements OutboundTransformer {
             cache_control: part.cacheControl ? { type: part.cacheControl.type } : undefined,
           });
         } else if (part.type === 'image_url' && part.imageUrl) {
-          // 簡化圖片處理
+          // Simplified image handling
           blocks.push({
             type: 'image',
             source: {
@@ -366,12 +366,12 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 轉換 assistant 內容
+   * Convert assistant content
    */
   private convertAssistantContent(msg: Message): AnthropicContent {
     const blocks: AnthropicContentBlock[] = [];
 
-    // Thinking 內容
+    // Thinking content
     if (msg.reasoningContent) {
       blocks.push({
         type: 'thinking',
@@ -380,7 +380,7 @@ export class AnthropicOutbound implements OutboundTransformer {
       });
     }
 
-    // 文字內容
+    // Text content
     if (msg.content.content) {
       blocks.push({
         type: 'text',
@@ -389,7 +389,7 @@ export class AnthropicOutbound implements OutboundTransformer {
       });
     }
 
-    // 多部分內容
+    // Multi-part content
     if (msg.content.multipleContent) {
       for (const part of msg.content.multipleContent) {
         if (part.type === 'text' && part.text) {
@@ -419,7 +419,7 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * Thinking 預算
+   * Thinking budget
    */
   private getThinkingBudget(effort: string, budget?: number): number {
     if (budget) return budget;
@@ -432,7 +432,7 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 將 Anthropic 回應轉換為內部格式
+   * Convert Anthropic response to internal format
    */
   private convertToInternalResponse(resp: AnthropicResponse): InternalLLMResponse {
     const content: string[] = [];
@@ -480,7 +480,7 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 處理流式事件
+   * Handle stream event
    */
   private handleStreamEvent(event: any): InternalLLMResponse | null {
     if (!this.streamState) return null;
@@ -635,7 +635,7 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 轉換 stop_reason
+   * Convert stop_reason
    */
   private convertStopReason(stopReason: string): string {
     const mapping: Record<string, string> = {
@@ -648,7 +648,7 @@ export class AnthropicOutbound implements OutboundTransformer {
   }
 
   /**
-   * 轉換 usage
+   * Convert usage
    */
   private convertUsage(usage: any): Usage {
     return {

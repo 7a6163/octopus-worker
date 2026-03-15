@@ -1,33 +1,33 @@
 /**
- * APIKey 快取層
- * 使用 Workers KV 進行快取
+ * APIKey cache layer
+ * Uses Workers KV for caching
  *
- * 快取策略：
- * - TTL: 5 分鐘（300 秒）
- * - 快取穿透保護：快取 null 結果（TTL: 1 分鐘）
+ * Cache strategy:
+ * - TTL: 5 minutes (300 seconds)
+ * - Cache penetration protection: cache null results (TTL: 1 minute)
  */
 
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { validateAPIKey } from '@/services/db/apikey';
 import type { APIKey } from '@/types/apikey';
 
-const CACHE_TTL = 300; // 5 分鐘
-const NULL_CACHE_TTL = 60; // 1 分鐘（用於快取不存在的記錄）
+const CACHE_TTL = 300; // 5 minutes
+const NULL_CACHE_TTL = 60; // 1 minute (for caching non-existent records)
 
 /**
- * 快取 Key 前綴
+ * Cache key prefix
  */
 const KEY_PREFIX = 'apikey:';
 
 /**
- * 生成快取 Key
+ * Generate a cache key
  */
 function getCacheKey(key: string): string {
   return `${KEY_PREFIX}${key}`;
 }
 
 /**
- * 從快取獲取並驗證 APIKey
+ * Get and validate an APIKey from cache
  */
 export async function getCachedAPIKey(
   kv: KVNamespace,
@@ -36,32 +36,32 @@ export async function getCachedAPIKey(
 ): Promise<APIKey | null> {
   const cacheKey = getCacheKey(key);
 
-  // 1. 嘗試從快取讀取
+  // 1. Try reading from cache
   const cached = await kv.get(cacheKey, 'text');
   if (cached !== null) {
-    // 快取命中
+    // Cache hit
     if (cached === '__NULL__') {
-      // 快取的 null 結果（無效 Key）
+      // Cached null result (invalid key)
       return null;
     }
     try {
       return JSON.parse(cached) as APIKey;
     } catch (err) {
       console.error('Failed to parse cached API key:', err);
-      // 快取解析失敗，刪除快取並繼續從 DB 讀取
+      // Cache parse failed; delete and fall back to DB
       await kv.delete(cacheKey);
     }
   }
 
-  // 2. 快取未命中，從 DB 驗證
+  // 2. Cache miss; validate from DB
   const apiKey = await validateAPIKey(db, key);
 
-  // 3. 寫入快取
+  // 3. Write to cache
   if (apiKey === null) {
-    // 快取 null 結果（防止快取穿透）
+    // Cache null result (prevent cache penetration)
     await kv.put(cacheKey, '__NULL__', { expirationTtl: NULL_CACHE_TTL });
   } else {
-    // 快取正常結果
+    // Cache the result
     await kv.put(cacheKey, JSON.stringify(apiKey), { expirationTtl: CACHE_TTL });
   }
 
@@ -69,7 +69,7 @@ export async function getCachedAPIKey(
 }
 
 /**
- * 使快取失效
+ * Invalidate cache entry
  */
 export async function invalidateAPIKeyCache(kv: KVNamespace, key: string): Promise<void> {
   const cacheKey = getCacheKey(key);

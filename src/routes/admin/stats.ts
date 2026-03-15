@@ -42,7 +42,7 @@ stats.get('/', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get stats:', err);
-    return c.json({ code: 500, message: '獲取統計失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get statistics' }, 500);
   }
 });
 
@@ -240,7 +240,7 @@ stats.get('/date-range', async (c) => {
     });
   } catch (err) {
     console.error('Failed to get date range stats:', err);
-    return c.json({ code: 500, message: '獲取統計失敗' }, 500);
+    return c.json({ code: 500, message: 'Failed to get statistics' }, 500);
   }
 });
 

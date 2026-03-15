@@ -40,13 +40,13 @@ import type { InternalLLMRequest } from '@/types/llm';
 const MAX_ROUNDS = 3; // Maximum retry rounds
 
 /**
- * Relay 處理器主函數
+ * Relay handler main function
  */
 export async function relayHandler(
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   inboundType: InboundType
 ) {
-  // 1. 解析請求
+  // 1. Parse request
   const body = await c.req.arrayBuffer();
   const inAdapter = getInboundTransformer(inboundType);
 
@@ -65,7 +65,7 @@ export async function relayHandler(
     );
   }
 
-  // 2. 驗證模型存在
+  // 2. Validate model is specified
   if (!internalRequest.model) {
     return c.json(
       {
@@ -78,7 +78,7 @@ export async function relayHandler(
     );
   }
 
-  // 3. 檢查 API Key 支援的模型（TODO: Phase 2 從 DB 讀取）
+  // 3. Check API key supported models (TODO: Phase 2 read from DB)
   const supportedModels = c.get('supportedModels');
   if (supportedModels) {
     const models = supportedModels.split(',').map((m) => m.trim());
@@ -95,7 +95,7 @@ export async function relayHandler(
     }
   }
 
-  // 4. 獲取模型分組（從 Cache/DB 讀取）
+  // 4. Get model group (from cache/DB)
   const group = await getCachedGroupByModel(c.env.CACHE, c.env.DB, internalRequest.model);
 
   if (!group || group.items.length === 0) {
@@ -110,34 +110,34 @@ export async function relayHandler(
     );
   }
 
-  // 5. 初始化統計
+  // 5. Initialize statistics
   const apiKeyId = c.get('apiKeyId');
   const requestModel = internalRequest.model;
   console.log(`Relay request: model=${requestModel}, apiKeyId=${apiKeyId}`);
 
-  // 6. 載入熔斷器設定（一次性讀取，避免每次 attempt 都查 DB）
+  // 6. Load circuit breaker settings (read once to avoid DB queries per attempt)
   const cbSettings = await loadCircuitBreakerSettings(c.env.DB);
 
-  // 7. 獲取負載平衡器
+  // 7. Get load balancer
   const balancer = getBalancer(group.mode, c.env);
 
-  // 8. 重試邏輯
+  // 8. Retry logic
   let lastError: Error | null = null;
   const itemCount = group.items.length;
-  const excludeIds = new Set<number>(); // 記錄失敗的 GroupItem ID
+  const excludeIds = new Set<number>(); // Track failed GroupItem IDs
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     for (let i = 0; i < itemCount; i++) {
       const attemptStart = Date.now();
 
-      // 使用負載平衡器選擇 GroupItem
+      // Select GroupItem using load balancer
       const item = await balancer.selectNext(group, excludeIds);
       if (!item) {
         lastError = new Error('no available items');
         break;
       }
 
-      // 獲取渠道（從 Cache/DB 讀取）
+      // Get channel (from cache/DB)
       const channel = await getCachedChannel(c.env.CACHE, c.env.DB, item.channelId);
 
       if (!channel || !channel.enabled) {
@@ -146,7 +146,7 @@ export async function relayHandler(
         continue;
       }
 
-      // 選擇 Key
+      // Select key
       const usedKey = selectChannelKey(channel);
       if (!usedKey) {
         lastError = new Error('no available key');
@@ -154,7 +154,7 @@ export async function relayHandler(
         continue;
       }
 
-      // 熔斷檢查：跳過已熔斷的 channel+key+model 組合
+      // Circuit breaker check: skip tripped channel+key+model combinations
       const trippedResult = isTripped(channel.id, usedKey.id, item.modelName, cbSettings);
       if (trippedResult.tripped) {
         const remainMsg =
@@ -165,10 +165,10 @@ export async function relayHandler(
           `Circuit breaker tripped: channel=${channel.name}, key=${usedKey.id}, ` +
             `model=${item.modelName}${remainMsg}`
         );
-        continue; // 不標記 excludeIds，讓其他 key 仍有機會被選中
+        continue; // Don't add to excludeIds so other keys still have a chance
       }
 
-      // 獲取出站轉換器
+      // Get outbound transformer
       const outAdapter = getOutboundTransformer(channel.type);
       if (!outAdapter) {
         lastError = new Error(`unsupported channel type: ${channel.type}`);
@@ -182,11 +182,11 @@ export async function relayHandler(
           `attempt=${i + 1}/${itemCount}`
       );
 
-      // 建立帶有實際模型名稱的請求副本（不 mutate 原始物件）
+      // Create request copy with actual model name (don't mutate the original)
       const requestForChannel = { ...internalRequest, model: item.modelName };
 
       try {
-        // 轉發請求
+        // Forward request
         const result = await forwardRequest(
           c,
           inAdapter,
@@ -198,7 +198,7 @@ export async function relayHandler(
         );
 
         if (result.success) {
-          // 成功 — 記錄到熔斷器
+          // Success -- record to circuit breaker
           recordSuccess(channel.id, usedKey.id, item.modelName);
 
           const attemptDuration = Date.now() - attemptStart;
@@ -207,7 +207,7 @@ export async function relayHandler(
               `statusCode=${result.statusCode}`
           );
 
-          // 更新 Key 狀態到 DB
+          // Update key status in DB
           await updateChannelKeyStatus(
             c.env.DB,
             usedKey.id,
@@ -215,7 +215,7 @@ export async function relayHandler(
             usedKey.totalCost
           );
 
-          // 記錄統計
+          // Record statistics
           try {
             await recordStatistics(c.env, {
               apiKeyId: apiKeyId || 0,
@@ -236,7 +236,7 @@ export async function relayHandler(
           throw result.error;
         }
       } catch (err) {
-        // 失敗 — 記錄到熔斷器
+        // Failure -- record to circuit breaker
         recordFailure(channel.id, usedKey.id, item.modelName, cbSettings);
 
         const attemptDuration = Date.now() - attemptStart;
@@ -248,21 +248,21 @@ export async function relayHandler(
 
         lastError = new Error(`channel ${channel.name} failed: ${error.message}`);
 
-        // 更新 Key 狀態到 DB（特別是 429 錯誤）
+        // Update key status in DB (especially for 429 errors)
         const statusCode = error.statusCode || 500;
         await updateChannelKeyStatus(c.env.DB, usedKey.id, statusCode, usedKey.totalCost);
 
-        // 標記為失敗
+        // Mark as failed
         excludeIds.add(item.id);
       }
     }
   }
 
-  // 所有渠道都失敗
+  // All channels failed
   const errorMessage = lastError?.message || 'all channels failed';
   console.error(`All channels failed after ${MAX_ROUNDS} rounds:`, errorMessage);
 
-  // 記錄失敗統計
+  // Record failure statistics
   try {
     await recordStatistics(c.env, {
       apiKeyId: apiKeyId || 0,
@@ -297,7 +297,7 @@ interface TokenUsage {
 }
 
 /**
- * 轉發請求到上游 API
+ * Forward request to upstream API
  */
 async function forwardRequest(
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
@@ -314,7 +314,7 @@ async function forwardRequest(
   error?: Error;
   tokenUsage?: TokenUsage;
 }> {
-  // 建構出站請求
+  // Build outbound request
   const baseUrl = selectBestBaseUrl(channel.baseUrls);
   const outboundRequest = await outAdapter.transformRequest(
     internalRequest,
@@ -322,10 +322,10 @@ async function forwardRequest(
     usedKey.channelKey
   );
 
-  // 複製請求頭
+  // Copy request headers
   copyHeaders(c.req.raw, outboundRequest, channel.customHeader);
 
-  // 發送請求
+  // Send request
   let response: Response;
   try {
     response = await fetch(outboundRequest);
@@ -336,7 +336,7 @@ async function forwardRequest(
     };
   }
 
-  // 檢查狀態碼
+  // Check status code
   if (response.status < 200 || response.status >= 300) {
     const body = await response.text();
     return {
@@ -346,7 +346,7 @@ async function forwardRequest(
     };
   }
 
-  // 處理回應
+  // Handle response
   if (internalRequest.stream) {
     return handleStreamResponse(c, response, inAdapter, outAdapter, firstTokenTimeOutSec);
   } else {
@@ -355,7 +355,7 @@ async function forwardRequest(
 }
 
 /**
- * 處理流式回應
+ * Handle streaming response
  */
 async function handleStreamResponse(
   _c: Context<{ Bindings: Bindings; Variables: Variables }>,
@@ -387,7 +387,7 @@ async function handleStreamResponse(
   const encoder = new TextEncoder();
   let aborted = false;
 
-  // 用 Promise 等待 first token 或 timeout，解決 race condition
+  // Use a Promise to await first token or timeout, resolving the race condition
   const firstTokenResult = await new Promise<{ received: boolean }>((resolve) => {
     let resolved = false;
     let firstToken = true;
@@ -404,7 +404,7 @@ async function handleStreamResponse(
       }, firstTokenTimeOutSec * 1000);
     }
 
-    // 處理 SSE 流
+    // Process SSE stream
     (async () => {
       const reader = response.body?.getReader();
       if (!reader) {
@@ -468,7 +468,7 @@ async function handleStreamResponse(
       }
     })();
 
-    // If no timeout configured, don't block — resolve immediately
+    // If no timeout configured, don't block -- resolve immediately
     if (firstTokenTimeOutSec <= 0 && !resolved) {
       resolved = true;
       resolve({ received: true });
@@ -497,7 +497,7 @@ async function handleStreamResponse(
 }
 
 /**
- * 處理非流式回應
+ * Handle non-streaming response
  */
 async function handleNonStreamResponse(
   _c: Context<{ Bindings: Bindings; Variables: Variables }>,
@@ -512,11 +512,11 @@ async function handleNonStreamResponse(
   tokenUsage?: TokenUsage;
 }> {
   try {
-    // 轉換回應：上游 → 內部 → 客戶端
+    // Transform response: upstream -> internal -> client
     const internalResponse = await outAdapter.transformResponse(response);
     const outResponse = await inAdapter.transformResponse(internalResponse);
 
-    // 提取 token 使用量
+    // Extract token usage
     let tokenUsage: TokenUsage | undefined;
     if (internalResponse.usage) {
       tokenUsage = {
@@ -544,10 +544,10 @@ async function handleNonStreamResponse(
   }
 }
 
-// ==================== 輔助函數 ====================
+// ==================== Helper Functions ====================
 
 /**
- * 選擇延遲最低的 Base URL
+ * Select the base URL with the lowest latency
  */
 function selectBestBaseUrl(baseUrls: BaseUrl[]): string {
   if (!baseUrls || baseUrls.length === 0) return '';
@@ -565,7 +565,7 @@ function selectBestBaseUrl(baseUrls: BaseUrl[]): string {
 }
 
 /**
- * 選擇可用的 Channel Key
+ * Select an available channel key
  */
 function selectChannelKey(channel: Channel): ChannelKey | null {
   const nowSec = Math.floor(Date.now() / 1000);
@@ -574,12 +574,12 @@ function selectChannelKey(channel: Channel): ChannelKey | null {
   for (const key of channel.keys) {
     if (!key.enabled || !key.channelKey) continue;
 
-    // 429 冷卻期檢查（5 分鐘）
+    // 429 cooldown check (5 minutes)
     if (key.statusCode === 429 && key.lastUseTimeStamp > 0) {
       if (nowSec - key.lastUseTimeStamp < 300) continue;
     }
 
-    // 選擇成本最低的 Key
+    // Select the key with the lowest cost
     if (!best || key.totalCost < best.totalCost) {
       best = key;
     }
@@ -589,7 +589,7 @@ function selectChannelKey(channel: Channel): ChannelKey | null {
 }
 
 /**
- * 複製請求頭
+ * Copy request headers
  */
 function copyHeaders(
   inRequest: Request,
@@ -620,14 +620,14 @@ function copyHeaders(
     }
   }
 
-  // 自訂 Headers
+  // Custom headers
   for (const header of customHeaders) {
     outRequest.headers.set(header.headerKey, header.headerValue);
   }
 }
 
 /**
- * 載入熔斷器設定（從 DB 讀取，帶預設值）
+ * Load circuit breaker settings (from DB, with defaults)
  */
 async function loadCircuitBreakerSettings(db: D1Database): Promise<CircuitBreakerSettings> {
   const [threshold, cooldownSec, maxCooldownSec] = await Promise.all([
@@ -644,7 +644,7 @@ async function loadCircuitBreakerSettings(db: D1Database): Promise<CircuitBreake
 }
 
 /**
- * 記錄統計信息
+ * Record statistics
  */
 async function recordStatistics(
   env: Bindings,
@@ -666,7 +666,7 @@ async function recordStatistics(
   const cacheReadTokens = tokenUsage?.cacheReadTokens || 0;
   const cacheCreationTokens = tokenUsage?.cacheCreationTokens || 0;
 
-  // 計算費用
+  // Calculate cost
   const costCalculation = await calculateCost(
     env.DB,
     env.CACHE,
@@ -677,7 +677,7 @@ async function recordStatistics(
     cacheCreationTokens
   );
 
-  // 記錄到 StatsAggregator DO
+  // Record to StatsAggregator DO
   try {
     const doId = env.STATS_AGGREGATOR.idFromName('global');
     const doStub = env.STATS_AGGREGATOR.get(doId);
@@ -694,10 +694,10 @@ async function recordStatistics(
     });
   } catch (doErr) {
     console.error('Failed to record to StatsAggregator:', doErr);
-    // 不阻斷請求
+    // Don't block the request
   }
 
-  // 記錄到 Relay Log
+  // Record to relay log
   try {
     await createRelayLog(env.DB, {
       time: Math.floor(Date.now() / 1000),
@@ -721,6 +721,6 @@ async function recordStatistics(
     });
   } catch (logErr) {
     console.error('Failed to create relay log:', logErr);
-    // 不阻斷請求
+    // Don't block the request
   }
 }
