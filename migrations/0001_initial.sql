@@ -1,15 +1,15 @@
--- ==================== Octopus Workers 初始 Schema ====================
--- 對應原始 Go 專案的資料表結構
+-- ==================== Octopus Workers Initial Schema ====================
+-- Corresponds to the original Go project's table structure
 
--- ==================== 用戶表 ====================
+-- ==================== Users ====================
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL
 );
 
--- 初始管理員帳號 (用戶名: admin, 密碼: admin)
--- 密碼使用 PBKDF2-SHA256 hash (salt:hash 格式)
+-- Default admin account (username: admin, password: admin)
+-- Password uses PBKDF2-SHA256 hash (salt:hash format)
 INSERT OR IGNORE INTO users (id, username, password)
 VALUES (
   1,
@@ -17,7 +17,7 @@ VALUES (
   '7a5c1e1ea4e5b134570557602d46a912:2dfd0ec28a030f45367bb960e094a8d8be1ad3084748704dd4e1cd55d031f22e'
 );
 
--- ==================== 渠道表 ====================
+-- ==================== Channels ====================
 CREATE TABLE IF NOT EXISTS channels (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS channels (
 CREATE INDEX IF NOT EXISTS idx_channels_enabled ON channels(enabled);
 CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name);
 
--- ==================== 渠道 Key 表 ====================
+-- ==================== Channel Keys ====================
 CREATE TABLE IF NOT EXISTS channel_keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   channel_id INTEGER NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS channel_keys (
 CREATE INDEX IF NOT EXISTS idx_channel_keys_channel_id ON channel_keys(channel_id);
 CREATE INDEX IF NOT EXISTS idx_channel_keys_enabled ON channel_keys(enabled);
 
--- ==================== 分組表 ====================
+-- ==================== Groups ====================
 CREATE TABLE IF NOT EXISTS groups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS groups (
 
 CREATE INDEX IF NOT EXISTS idx_groups_name ON groups(name);
 
--- ==================== 分組項目表 ====================
+-- ==================== Group Items ====================
 CREATE TABLE IF NOT EXISTS group_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   group_id INTEGER NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS group_items (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_group_items_unique ON group_items(group_id, channel_id, model_name);
 CREATE INDEX IF NOT EXISTS idx_group_items_group_id ON group_items(group_id);
 
--- ==================== API Key 表 ====================
+-- ==================== API Keys ====================
 CREATE TABLE IF NOT EXISTS api_keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -94,13 +94,13 @@ CREATE TABLE IF NOT EXISTS api_keys (
 CREATE INDEX IF NOT EXISTS idx_api_keys_api_key ON api_keys(api_key);
 CREATE INDEX IF NOT EXISTS idx_api_keys_enabled ON api_keys(enabled);
 
--- ==================== 設定表 ====================
+-- ==================== Settings ====================
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
 
--- 初始設定
+-- Default settings
 INSERT OR IGNORE INTO settings (key, value) VALUES
   ('proxy_url', ''),
   ('stats_save_interval', '10'),
@@ -110,7 +110,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
   ('relay_log_keep_period', '7'),
   ('relay_log_keep_enabled', 'true');
 
--- ==================== LLM 價格表 ====================
+-- ==================== LLM Pricing ====================
 CREATE TABLE IF NOT EXISTS llm_infos (
   name TEXT PRIMARY KEY,
   input REAL DEFAULT 0,
@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS llm_infos (
 
 CREATE INDEX IF NOT EXISTS idx_llm_infos_name ON llm_infos(name);
 
--- ==================== 請求日誌表 ====================
+-- ==================== Relay Logs ====================
 CREATE TABLE IF NOT EXISTS relay_logs (
   id INTEGER PRIMARY KEY,
   time INTEGER NOT NULL,
@@ -162,9 +162,9 @@ CREATE INDEX IF NOT EXISTS idx_relay_logs_request_model ON relay_logs(request_mo
 CREATE INDEX IF NOT EXISTS idx_relay_logs_api_key_id ON relay_logs(api_key_id);
 CREATE INDEX IF NOT EXISTS idx_relay_logs_success ON relay_logs(success);
 
--- ==================== 統計表 ====================
+-- ==================== Statistics ====================
 
--- 總體統計
+-- Total statistics
 CREATE TABLE IF NOT EXISTS stats_total (
   id INTEGER PRIMARY KEY DEFAULT 1,
   input_token INTEGER DEFAULT 0,
@@ -176,10 +176,10 @@ CREATE TABLE IF NOT EXISTS stats_total (
   request_failed INTEGER DEFAULT 0
 );
 
--- 插入初始統計記錄
+-- Insert initial stats record
 INSERT OR IGNORE INTO stats_total (id) VALUES (1);
 
--- 每日統計
+-- Daily statistics
 CREATE TABLE IF NOT EXISTS stats_daily (
   date TEXT PRIMARY KEY,
   input_token INTEGER DEFAULT 0,
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS stats_daily (
   request_failed INTEGER DEFAULT 0
 );
 
--- 每小時統計
+-- Hourly statistics
 CREATE TABLE IF NOT EXISTS stats_hourly (
   hour INTEGER NOT NULL,
   date TEXT NOT NULL,
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS stats_hourly (
 
 CREATE INDEX IF NOT EXISTS idx_stats_hourly_date ON stats_hourly(date);
 
--- 渠道統計
+-- Channel statistics
 CREATE TABLE IF NOT EXISTS stats_channel (
   channel_id INTEGER PRIMARY KEY,
   input_token INTEGER DEFAULT 0,
@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS stats_channel (
   FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE
 );
 
--- 模型統計
+-- Model statistics
 CREATE TABLE IF NOT EXISTS stats_model (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE IF NOT EXISTS stats_model (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_stats_model_unique ON stats_model(name, channel_id);
 
--- API Key 統計
+-- API Key statistics
 CREATE TABLE IF NOT EXISTS stats_api_key (
   api_key_id INTEGER PRIMARY KEY,
   input_token INTEGER DEFAULT 0,
@@ -250,6 +250,6 @@ CREATE TABLE IF NOT EXISTS stats_api_key (
   FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
 );
 
--- ==================== 完成 ====================
--- Schema 版本：1.0.0
--- 建立時間：2026-02-05
+-- ==================== Done ====================
+-- Schema version: 1.0.0
+-- Created: 2026-02-05
