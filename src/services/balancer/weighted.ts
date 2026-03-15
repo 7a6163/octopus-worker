@@ -8,9 +8,9 @@
  * - 支援排除失敗的項目
  */
 
-import type { Balancer } from './interface';
-import type { Group, GroupItem } from '@/types/group';
 import type { Bindings } from '@/types';
+import type { Group, GroupItem } from '@/types/group';
+import type { Balancer } from './interface';
 import { filterAvailableItems } from './interface';
 
 /**
@@ -46,9 +46,7 @@ export class WeightedBalancer implements Balancer {
 
     try {
       // 獲取當前計數器
-      const response = await doStub.fetch(
-        `https://internal/current?groupId=${group.id}`
-      );
+      const response = await doStub.fetch(`https://internal/current?groupId=${group.id}`);
 
       if (!response.ok) {
         throw new Error(`DO request failed: ${response.status}`);
@@ -61,9 +59,7 @@ export class WeightedBalancer implements Balancer {
       const selected = this.smoothWeightedRoundRobin(availableItems, counter);
 
       // 更新計數器
-      await doStub.fetch(
-        `https://internal/next?groupId=${group.id}&itemCount=999999`
-      );
+      await doStub.fetch(`https://internal/next?groupId=${group.id}&itemCount=999999`);
 
       return selected;
     } catch (err) {
@@ -143,10 +139,9 @@ export class WeightedBalancer implements Balancer {
       const doId = this.env.ROUND_ROBIN_COUNTER.idFromName(`group-${groupId}-weighted`);
       const doStub = this.env.ROUND_ROBIN_COUNTER.get(doId);
 
-      const response = await doStub.fetch(
-        `https://internal/reset?groupId=${groupId}`,
-        { method: 'POST' }
-      );
+      const response = await doStub.fetch(`https://internal/reset?groupId=${groupId}`, {
+        method: 'POST',
+      });
 
       if (!response.ok) {
         throw new Error(`DO reset failed: ${response.status}`);

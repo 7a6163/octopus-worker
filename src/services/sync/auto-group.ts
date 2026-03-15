@@ -6,10 +6,10 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Channel } from '@/types/channel';
-import type { Group } from '@/types/group';
-import { AutoGroupType } from '@/types/channel';
 import { getAllGroups } from '@/services/db/group';
+import type { Channel } from '@/types/channel';
+import { AutoGroupType } from '@/types/channel';
+import type { Group } from '@/types/group';
 
 const D1_BATCH_LIMIT = 50;
 
@@ -17,10 +17,7 @@ const D1_BATCH_LIMIT = 50;
  * Match channel models to groups and insert group_items for matches.
  * Uses INSERT OR IGNORE to avoid duplicates (unique index on group_id, channel_id, model_name).
  */
-export async function autoGroupChannel(
-  db: D1Database,
-  channel: Channel
-): Promise<void> {
+export async function autoGroupChannel(db: D1Database, channel: Channel): Promise<void> {
   if (channel.autoGroup === AutoGroupType.None) {
     return;
   }
@@ -58,9 +55,7 @@ export async function autoGroupChannel(
     await db.batch(batch);
   }
 
-  console.log(
-    `Auto-grouped ${matchResults.length} model-group pairs for channel ${channel.id}`
-  );
+  console.log(`Auto-grouped ${matchResults.length} model-group pairs for channel ${channel.id}`);
 }
 
 /**
@@ -96,11 +91,7 @@ function findMatches(
 /**
  * Check if a model matches a group based on the auto-group strategy.
  */
-function isMatch(
-  autoGroupType: AutoGroupType,
-  group: Group,
-  model: string
-): boolean {
+function isMatch(autoGroupType: AutoGroupType, group: Group, model: string): boolean {
   switch (autoGroupType) {
     case AutoGroupType.Exact:
       return model.toLowerCase() === group.name.toLowerCase();
@@ -132,10 +123,7 @@ function matchByRegex(group: Group, model: string): boolean {
     const regex = new RegExp(pattern, 'i');
     return regex.test(model);
   } catch (err) {
-    console.error(
-      `Invalid regex for group ${group.id} (${group.name}): ${pattern}`,
-      err
-    );
+    console.error(`Invalid regex for group ${group.id} (${group.name}): ${pattern}`, err);
     return false;
   }
 }

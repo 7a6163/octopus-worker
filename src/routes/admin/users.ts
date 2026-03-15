@@ -2,19 +2,19 @@
  * Users 管理 API
  */
 
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
 import { z } from 'zod';
-import type { Bindings, Variables } from '@/types';
+import { hashPassword } from '@/services/auth/password';
 import {
+  createUser,
+  deleteUser,
   getAllUsers,
   getUserById,
-  createUser,
-  updateUser,
-  deleteUser,
   getUserByUsername,
+  updateUser,
 } from '@/services/db/user';
-import { hashPassword } from '@/services/auth/password';
+import type { Bindings, Variables } from '@/types';
 
 const users = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -55,8 +55,8 @@ users.get('/', async (c) => {
  * 獲取指定使用者
  */
 users.get('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的使用者 ID' }, 400);
   }
 
@@ -123,8 +123,8 @@ users.post('/', zValidator('json', createUserSchema), async (c) => {
  * 更新使用者
  */
 users.put('/:id', zValidator('json', updateUserSchema), async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的使用者 ID' }, 400);
   }
 
@@ -182,8 +182,8 @@ users.put('/:id', zValidator('json', updateUserSchema), async (c) => {
  * 刪除使用者
  */
 users.delete('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的使用者 ID' }, 400);
   }
 

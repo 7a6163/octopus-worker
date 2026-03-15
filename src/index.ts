@@ -69,10 +69,12 @@ app.get('/', (c) => {
 
 // Relay API
 import relayRoutes from '@/routes/relay';
+
 app.route('/v1', relayRoutes);
 
 // Admin API
 import adminRoutes from '@/routes/admin';
+
 app.route('/api/v1', adminRoutes);
 
 // ==================== 404 處理 ====================

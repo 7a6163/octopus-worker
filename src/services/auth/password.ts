@@ -23,13 +23,9 @@ async function pbkdf2Hash(password: string, salt: string): Promise<string> {
   const passwordBuffer = encoder.encode(password);
   const saltBuffer = encoder.encode(salt);
 
-  const key = await crypto.subtle.importKey(
-    'raw',
-    passwordBuffer,
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits']
-  );
+  const key = await crypto.subtle.importKey('raw', passwordBuffer, { name: 'PBKDF2' }, false, [
+    'deriveBits',
+  ]);
 
   const hashBuffer = await crypto.subtle.deriveBits(
     {

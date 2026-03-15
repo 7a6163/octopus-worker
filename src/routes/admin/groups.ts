@@ -2,20 +2,20 @@
  * Groups 管理 API
  */
 
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
 import { z } from 'zod';
+import { invalidateGroupCache } from '@/services/cache/group';
+import {
+  createGroup,
+  deleteGroup,
+  getGroup,
+  getGroupByModel,
+  listGroups,
+  updateGroup,
+} from '@/services/db/group';
 import type { Bindings, Variables } from '@/types';
 import { GroupMode } from '@/types/group';
-import {
-  listGroups,
-  getGroup,
-  createGroup,
-  updateGroup,
-  deleteGroup,
-  getGroupByModel,
-} from '@/services/db/group';
-import { invalidateGroupCache } from '@/services/cache/group';
 
 const groups = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -56,8 +56,8 @@ groups.get('/', async (c) => {
  * 獲取指定 group
  */
 groups.get('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的 group ID' }, 400);
   }
 
@@ -136,8 +136,8 @@ groups.post('/', zValidator('json', createGroupSchema), async (c) => {
  * 更新 group
  */
 groups.put('/:id', zValidator('json', updateGroupSchema), async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的 group ID' }, 400);
   }
 
@@ -185,8 +185,8 @@ groups.put('/:id', zValidator('json', updateGroupSchema), async (c) => {
  * 刪除 group
  */
 groups.delete('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的 group ID' }, 400);
   }
 

@@ -15,10 +15,10 @@ import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
  */
 export interface PricingInfo {
   name: string;
-  input: number;          // 每百萬 Token 的價格（美元）
-  output: number;         // 每百萬 Token 的價格（美元）
-  cacheRead: number;      // Cache Read 每百萬 Token 的價格
-  cacheWrite: number;     // Cache Write 每百萬 Token 的價格
+  input: number; // 每百萬 Token 的價格（美元）
+  output: number; // 每百萬 Token 的價格（美元）
+  cacheRead: number; // Cache Read 每百萬 Token 的價格
+  cacheWrite: number; // Cache Write 每百萬 Token 的價格
 }
 
 /**
@@ -159,10 +159,7 @@ export async function calculateCost(
 /**
  * 批次插入或更新價格資訊
  */
-export async function batchUpsertPricing(
-  db: D1Database,
-  pricings: PricingInfo[]
-): Promise<void> {
+export async function batchUpsertPricing(db: D1Database, pricings: PricingInfo[]): Promise<void> {
   if (pricings.length === 0) {
     return;
   }

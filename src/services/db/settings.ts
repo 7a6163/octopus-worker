@@ -152,7 +152,11 @@ export async function deleteSetting(db: D1Database, key: string): Promise<void> 
 /**
  * 獲取布林值設定
  */
-export async function getBooleanSetting(db: D1Database, key: string, defaultValue = false): Promise<boolean> {
+export async function getBooleanSetting(
+  db: D1Database,
+  key: string,
+  defaultValue = false
+): Promise<boolean> {
   const value = await getSetting(db, key);
   if (!value) return defaultValue;
 
@@ -162,10 +166,14 @@ export async function getBooleanSetting(db: D1Database, key: string, defaultValu
 /**
  * 獲取數字設定
  */
-export async function getNumberSetting(db: D1Database, key: string, defaultValue = 0): Promise<number> {
+export async function getNumberSetting(
+  db: D1Database,
+  key: string,
+  defaultValue = 0
+): Promise<number> {
   const value = await getSetting(db, key);
   if (!value) return defaultValue;
 
   const num = parseInt(value, 10);
-  return isNaN(num) ? defaultValue : num;
+  return Number.isNaN(num) ? defaultValue : num;
 }

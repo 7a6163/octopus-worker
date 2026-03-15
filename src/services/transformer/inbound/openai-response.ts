@@ -7,14 +7,14 @@
  * - 將內部 Chat Completions 回應/流轉回 Responses API 格式給客戶端
  */
 
-import type { InboundTransformer } from '../interface';
 import type {
   InternalLLMRequest,
   InternalLLMResponse,
   Message,
-  Usage,
   ToolCall,
+  Usage,
 } from '@/types/llm';
+import type { InboundTransformer } from '../interface';
 
 // ==================== Responses API 型別（客戶端格式）====================
 
@@ -207,7 +207,9 @@ export class OpenAIResponseInbound implements InboundTransformer {
 
     // Response format
     if (req.text?.format) {
-      result.responseFormat = { type: req.text.format.type as 'text' | 'json_object' | 'json_schema' };
+      result.responseFormat = {
+        type: req.text.format.type as 'text' | 'json_object' | 'json_schema',
+      };
     }
 
     // Reasoning
@@ -332,30 +334,36 @@ export class OpenAIResponseInbound implements InboundTransformer {
       this.hasReasoningItemStarted = true;
       this.currentItemId = generateItemId();
 
-      events.push(this.formatEvent({
-        type: 'response.output_item.added',
-        output_index: this.outputIndex,
-        item: { id: this.currentItemId, type: 'reasoning', status: 'in_progress', summary: [] },
-      }));
+      events.push(
+        this.formatEvent({
+          type: 'response.output_item.added',
+          output_index: this.outputIndex,
+          item: { id: this.currentItemId, type: 'reasoning', status: 'in_progress', summary: [] },
+        })
+      );
 
-      events.push(this.formatEvent({
-        type: 'response.reasoning_summary_part.added',
-        item_id: this.currentItemId,
-        output_index: this.outputIndex,
-        summary_index: 0,
-        part: { type: 'summary_text' },
-      }));
+      events.push(
+        this.formatEvent({
+          type: 'response.reasoning_summary_part.added',
+          item_id: this.currentItemId,
+          output_index: this.outputIndex,
+          summary_index: 0,
+          part: { type: 'summary_text' },
+        })
+      );
     }
 
     this.accumulatedReasoning += content;
 
-    events.push(this.formatEvent({
-      type: 'response.reasoning_summary_text.delta',
-      item_id: this.currentItemId,
-      output_index: this.outputIndex,
-      summary_index: 0,
-      delta: content,
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.reasoning_summary_text.delta',
+        item_id: this.currentItemId,
+        output_index: this.outputIndex,
+        summary_index: 0,
+        delta: content,
+      })
+    );
 
     return events;
   }
@@ -371,40 +379,46 @@ export class OpenAIResponseInbound implements InboundTransformer {
       this.hasMessageItemStarted = true;
       this.currentItemId = generateItemId();
 
-      events.push(this.formatEvent({
-        type: 'response.output_item.added',
-        output_index: this.outputIndex,
-        item: {
-          id: this.currentItemId,
-          type: 'message',
-          status: 'in_progress',
-          role: 'assistant',
-          content: [],
-        },
-      }));
+      events.push(
+        this.formatEvent({
+          type: 'response.output_item.added',
+          output_index: this.outputIndex,
+          item: {
+            id: this.currentItemId,
+            type: 'message',
+            status: 'in_progress',
+            role: 'assistant',
+            content: [],
+          },
+        })
+      );
     }
 
     if (!this.hasContentPartStarted) {
       this.hasContentPartStarted = true;
 
-      events.push(this.formatEvent({
-        type: 'response.content_part.added',
-        item_id: this.currentItemId,
-        output_index: this.outputIndex,
-        content_index: this.contentIndex,
-        part: { type: 'output_text', text: '' },
-      }));
+      events.push(
+        this.formatEvent({
+          type: 'response.content_part.added',
+          item_id: this.currentItemId,
+          output_index: this.outputIndex,
+          content_index: this.contentIndex,
+          part: { type: 'output_text', text: '' },
+        })
+      );
     }
 
     this.accumulatedText += content;
 
-    events.push(this.formatEvent({
-      type: 'response.output_text.delta',
-      item_id: this.currentItemId,
-      output_index: this.outputIndex,
-      content_index: this.contentIndex,
-      delta: content,
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.output_text.delta',
+        item_id: this.currentItemId,
+        output_index: this.outputIndex,
+        content_index: this.contentIndex,
+        delta: content,
+      })
+    );
 
     return events;
   }
@@ -434,17 +448,19 @@ export class OpenAIResponseInbound implements InboundTransformer {
         });
 
         const itemId = tc.id || generateItemId();
-        events.push(this.formatEvent({
-          type: 'response.output_item.added',
-          output_index: this.outputIndex,
-          item: {
-            id: itemId,
-            type: 'function_call',
-            status: 'in_progress',
-            call_id: tc.id,
-            name: tc.function.name,
-          },
-        }));
+        events.push(
+          this.formatEvent({
+            type: 'response.output_item.added',
+            output_index: this.outputIndex,
+            item: {
+              id: itemId,
+              type: 'function_call',
+              status: 'in_progress',
+              call_id: tc.id,
+              name: tc.function.name,
+            },
+          })
+        );
 
         this.toolCallItemStarted.set(idx, true);
         this.toolCallOutputIndex.set(idx, this.outputIndex);
@@ -457,13 +473,15 @@ export class OpenAIResponseInbound implements InboundTransformer {
 
       if (tc.function.arguments) {
         const itemId = stored.id || this.currentItemId;
-        events.push(this.formatEvent({
-          type: 'response.function_call_arguments.delta',
-          item_id: itemId,
-          output_index: this.outputIndex - 1,
-          content_index: 0,
-          delta: tc.function.arguments,
-        }));
+        events.push(
+          this.formatEvent({
+            type: 'response.function_call_arguments.delta',
+            item_id: itemId,
+            output_index: this.outputIndex - 1,
+            content_index: 0,
+            delta: tc.function.arguments,
+          })
+        );
       }
     }
 
@@ -476,31 +494,37 @@ export class OpenAIResponseInbound implements InboundTransformer {
     const events: string[] = [];
     const fullText = this.accumulatedReasoning;
 
-    events.push(this.formatEvent({
-      type: 'response.reasoning_summary_text.done',
-      item_id: this.currentItemId,
-      output_index: this.outputIndex,
-      summary_index: 0,
-      text: fullText,
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.reasoning_summary_text.done',
+        item_id: this.currentItemId,
+        output_index: this.outputIndex,
+        summary_index: 0,
+        text: fullText,
+      })
+    );
 
-    events.push(this.formatEvent({
-      type: 'response.reasoning_summary_part.done',
-      item_id: this.currentItemId,
-      output_index: this.outputIndex,
-      summary_index: 0,
-      part: { type: 'summary_text', text: fullText },
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.reasoning_summary_part.done',
+        item_id: this.currentItemId,
+        output_index: this.outputIndex,
+        summary_index: 0,
+        part: { type: 'summary_text', text: fullText },
+      })
+    );
 
-    events.push(this.formatEvent({
-      type: 'response.output_item.done',
-      output_index: this.outputIndex,
-      item: {
-        id: this.currentItemId,
-        type: 'reasoning',
-        summary: [{ type: 'summary_text', text: fullText }],
-      },
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.output_item.done',
+        output_index: this.outputIndex,
+        item: {
+          id: this.currentItemId,
+          type: 'reasoning',
+          summary: [{ type: 'summary_text', text: fullText }],
+        },
+      })
+    );
 
     this.outputIndex++;
     this.accumulatedReasoning = '';
@@ -515,17 +539,19 @@ export class OpenAIResponseInbound implements InboundTransformer {
 
     events.push(...this.closeCurrentContentPart());
 
-    events.push(this.formatEvent({
-      type: 'response.output_item.done',
-      output_index: this.outputIndex,
-      item: {
-        id: this.currentItemId,
-        type: 'message',
-        status: 'completed',
-        role: 'assistant',
-        content: [{ type: 'output_text', text: fullText }] as unknown as string,
-      },
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.output_item.done',
+        output_index: this.outputIndex,
+        item: {
+          id: this.currentItemId,
+          type: 'message',
+          status: 'completed',
+          role: 'assistant',
+          content: [{ type: 'output_text', text: fullText }] as unknown as string,
+        },
+      })
+    );
 
     this.outputIndex++;
     this.contentIndex = 0;
@@ -539,21 +565,25 @@ export class OpenAIResponseInbound implements InboundTransformer {
     const events: string[] = [];
     const fullText = this.accumulatedText;
 
-    events.push(this.formatEvent({
-      type: 'response.output_text.done',
-      item_id: this.currentItemId,
-      output_index: this.outputIndex,
-      content_index: this.contentIndex,
-      text: fullText,
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.output_text.done',
+        item_id: this.currentItemId,
+        output_index: this.outputIndex,
+        content_index: this.contentIndex,
+        text: fullText,
+      })
+    );
 
-    events.push(this.formatEvent({
-      type: 'response.content_part.done',
-      item_id: this.currentItemId,
-      output_index: this.outputIndex,
-      content_index: this.contentIndex,
-      part: { type: 'output_text', text: fullText },
-    }));
+    events.push(
+      this.formatEvent({
+        type: 'response.content_part.done',
+        item_id: this.currentItemId,
+        output_index: this.outputIndex,
+        content_index: this.contentIndex,
+        part: { type: 'output_text', text: fullText },
+      })
+    );
 
     return events;
   }
@@ -574,25 +604,29 @@ export class OpenAIResponseInbound implements InboundTransformer {
         const itemId = tc.id || this.currentItemId;
         const toolOutputIdx = this.toolCallOutputIndex.get(idx) ?? 0;
 
-        events.push(this.formatEvent({
-          type: 'response.function_call_arguments.done',
-          item_id: itemId,
-          output_index: toolOutputIdx,
-          arguments: tc.function.arguments,
-        }));
-
-        events.push(this.formatEvent({
-          type: 'response.output_item.done',
-          output_index: toolOutputIdx,
-          item: {
-            id: itemId,
-            type: 'function_call',
-            status: 'completed',
-            call_id: tc.id,
-            name: tc.function.name,
+        events.push(
+          this.formatEvent({
+            type: 'response.function_call_arguments.done',
+            item_id: itemId,
+            output_index: toolOutputIdx,
             arguments: tc.function.arguments,
-          },
-        }));
+          })
+        );
+
+        events.push(
+          this.formatEvent({
+            type: 'response.output_item.done',
+            output_index: toolOutputIdx,
+            item: {
+              id: itemId,
+              type: 'function_call',
+              status: 'completed',
+              call_id: tc.id,
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+            },
+          })
+        );
 
         this.toolCallItemStarted.set(idx, false);
       }
@@ -614,7 +648,11 @@ function convertItemToMessage(item: ResponsesItem): Message | null {
         msg.content = { content: item.content };
       } else if (Array.isArray(item.content)) {
         const textParts = item.content
-          .filter((ci) => (ci.type === 'output_text' || ci.type === 'input_text' || ci.type === 'text') && ci.text)
+          .filter(
+            (ci) =>
+              (ci.type === 'output_text' || ci.type === 'input_text' || ci.type === 'text') &&
+              ci.text
+          )
           .map((ci) => ci.text || '');
         if (textParts.length > 0) {
           msg.content = { content: textParts.join('') };
@@ -630,10 +668,15 @@ function convertItemToMessage(item: ResponsesItem): Message | null {
         return {
           role: (item.role as Message['role']) || 'user',
           content: {
-            multipleContent: [{
-              type: 'image_url',
-              imageUrl: { url: item.image_url, detail: item.detail as 'auto' | 'low' | 'high' | undefined },
-            }],
+            multipleContent: [
+              {
+                type: 'image_url',
+                imageUrl: {
+                  url: item.image_url,
+                  detail: item.detail as 'auto' | 'low' | 'high' | undefined,
+                },
+              },
+            ],
           },
         };
       }
@@ -643,17 +686,17 @@ function convertItemToMessage(item: ResponsesItem): Message | null {
       return {
         role: 'assistant',
         content: {},
-        toolCalls: [{
-          id: item.call_id || '',
-          type: 'function',
-          function: { name: item.name || '', arguments: item.arguments || '' },
-        }],
+        toolCalls: [
+          {
+            id: item.call_id || '',
+            type: 'function',
+            function: { name: item.name || '', arguments: item.arguments || '' },
+          },
+        ],
       };
 
     case 'function_call_output': {
-      const outputText = typeof item.output === 'string'
-        ? item.output
-        : '';
+      const outputText = typeof item.output === 'string' ? item.output : '';
       return {
         role: 'tool',
         content: { content: outputText },
@@ -721,7 +764,9 @@ function convertToResponsesAPIResponse(resp: InternalLLMResponse): ResponsesResp
         type: 'message',
         role: 'assistant',
         status: 'completed',
-        content: [{ type: 'output_text', text: message.content.content, annotations: [] }] as unknown as string,
+        content: [
+          { type: 'output_text', text: message.content.content, annotations: [] },
+        ] as unknown as string,
       });
     }
 
@@ -732,13 +777,15 @@ function convertToResponsesAPIResponse(resp: InternalLLMResponse): ResponsesResp
   }
 
   if (result.output.length === 0) {
-    result.output = [{
-      id: generateItemId(),
-      type: 'message',
-      role: 'assistant',
-      status: 'completed',
-      content: [{ type: 'output_text', text: '' }] as unknown as string,
-    }];
+    result.output = [
+      {
+        id: generateItemId(),
+        type: 'message',
+        role: 'assistant',
+        status: 'completed',
+        content: [{ type: 'output_text', text: '' }] as unknown as string,
+      },
+    ];
   }
 
   return result;

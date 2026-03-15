@@ -156,7 +156,7 @@ export async function getChannelsByIds(
     if (!keysMap.has(key.channel_id)) {
       keysMap.set(key.channel_id, []);
     }
-    keysMap.get(key.channel_id)!.push({
+    keysMap.get(key.channel_id)?.push({
       id: key.id,
       channelId: key.channel_id,
       enabled: key.enabled === 1,
@@ -258,11 +258,27 @@ export async function listChannels(db: D1Database): Promise<Channel[]> {
 
 export async function createChannel(
   db: D1Database,
-  data: { name: string; type: string; baseUrl: string; enabled: boolean; maxRetries: number; timeout: number }
+  data: {
+    name: string;
+    type: string;
+    baseUrl: string;
+    enabled: boolean;
+    maxRetries: number;
+    timeout: number;
+  }
 ): Promise<number> {
   const result = await db
-    .prepare('INSERT INTO channels (name, type, enabled, base_urls, max_retries, timeout) VALUES (?, ?, ?, ?, ?, ?)')
-    .bind(data.name, data.type, data.enabled ? 1 : 0, JSON.stringify([{ url: data.baseUrl, delay: 0 }]), data.maxRetries, data.timeout)
+    .prepare(
+      'INSERT INTO channels (name, type, enabled, base_urls, max_retries, timeout) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+    .bind(
+      data.name,
+      data.type,
+      data.enabled ? 1 : 0,
+      JSON.stringify([{ url: data.baseUrl, delay: 0 }]),
+      data.maxRetries,
+      data.timeout
+    )
     .run();
   return result.meta.last_row_id as number;
 }
@@ -270,15 +286,36 @@ export async function createChannel(
 export async function updateChannel(db: D1Database, id: number, updates: any): Promise<void> {
   const fields: string[] = [];
   const values: any[] = [];
-  if (updates.name) { fields.push('name = ?'); values.push(updates.name); }
-  if (updates.type) { fields.push('type = ?'); values.push(updates.type); }
-  if (updates.enabled !== undefined) { fields.push('enabled = ?'); values.push(updates.enabled ? 1 : 0); }
-  if (updates.maxRetries) { fields.push('max_retries = ?'); values.push(updates.maxRetries); }
-  if (updates.timeout) { fields.push('timeout = ?'); values.push(updates.timeout); }
-  if (updates.baseUrl) { fields.push('base_urls = ?'); values.push(JSON.stringify([{ url: updates.baseUrl, delay: 0 }])); }
+  if (updates.name) {
+    fields.push('name = ?');
+    values.push(updates.name);
+  }
+  if (updates.type) {
+    fields.push('type = ?');
+    values.push(updates.type);
+  }
+  if (updates.enabled !== undefined) {
+    fields.push('enabled = ?');
+    values.push(updates.enabled ? 1 : 0);
+  }
+  if (updates.maxRetries) {
+    fields.push('max_retries = ?');
+    values.push(updates.maxRetries);
+  }
+  if (updates.timeout) {
+    fields.push('timeout = ?');
+    values.push(updates.timeout);
+  }
+  if (updates.baseUrl) {
+    fields.push('base_urls = ?');
+    values.push(JSON.stringify([{ url: updates.baseUrl, delay: 0 }]));
+  }
   if (fields.length > 0) {
     values.push(id);
-    await db.prepare('UPDATE channels SET ' + fields.join(', ') + ' WHERE id = ?').bind(...values).run();
+    await db
+      .prepare(`UPDATE channels SET ${fields.join(', ')} WHERE id = ?`)
+      .bind(...values)
+      .run();
   }
 }
 

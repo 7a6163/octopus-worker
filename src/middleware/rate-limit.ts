@@ -28,42 +28,40 @@ interface RateLimitOptions {
 export function rateLimit(opts: RateLimitOptions) {
   const windowSec = opts.windowSec ?? 60;
 
-  return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(
-    async (c, next) => {
-      const key = opts.keyFn(c);
-      if (!key) return await next();
+  return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {
+    const key = opts.keyFn(c);
+    if (!key) return await next();
 
-      const cacheKey = `rl:${key}:${Math.floor(Date.now() / (windowSec * 1000))}`;
+    const cacheKey = `rl:${key}:${Math.floor(Date.now() / (windowSec * 1000))}`;
 
-      try {
-        const current = await c.env.CACHE.get(cacheKey, 'text');
-        const count = current ? parseInt(current, 10) : 0;
+    try {
+      const current = await c.env.CACHE.get(cacheKey, 'text');
+      const count = current ? parseInt(current, 10) : 0;
 
-        if (count >= opts.limit) {
-          return c.json(
-            {
-              error: {
-                message: 'Rate limit exceeded. Please retry later.',
-                type: 'rate_limit_error',
-              },
+      if (count >= opts.limit) {
+        return c.json(
+          {
+            error: {
+              message: 'Rate limit exceeded. Please retry later.',
+              type: 'rate_limit_error',
             },
-            429
-          );
-        }
-
-        // Increment — fire-and-forget (don't block the request)
-        c.executionCtx.waitUntil(
-          c.env.CACHE.put(cacheKey, String(count + 1), {
-            expirationTtl: windowSec * 2,
-          })
+          },
+          429
         );
-      } catch {
-        // KV failure should not block requests — fail open
       }
 
-      return await next();
+      // Increment — fire-and-forget (don't block the request)
+      c.executionCtx.waitUntil(
+        c.env.CACHE.put(cacheKey, String(count + 1), {
+          expirationTtl: windowSec * 2,
+        })
+      );
+    } catch {
+      // KV failure should not block requests — fail open
     }
-  );
+
+    return await next();
+  });
 }
 
 /**
@@ -74,7 +72,8 @@ export const loginRateLimit = (limit = 20) =>
   rateLimit({
     limit,
     windowSec: 60,
-    keyFn: (c) => `login:${c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'}`,
+    keyFn: (c) =>
+      `login:${c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'}`,
   });
 
 /**

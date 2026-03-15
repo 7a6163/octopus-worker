@@ -3,8 +3,8 @@
  */
 
 import { Hono } from 'hono';
-import type { Bindings, Variables } from '@/types';
 import { getAllSettings, updateSetting } from '@/services/db/settings';
+import type { Bindings, Variables } from '@/types';
 
 const settings = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

@@ -8,9 +8,9 @@
  * - 支援排除失敗的項目
  */
 
-import type { Balancer } from './interface';
-import type { Group, GroupItem } from '@/types/group';
 import type { Bindings } from '@/types';
+import type { Group, GroupItem } from '@/types/group';
+import type { Balancer } from './interface';
 import { filterAvailableItems } from './interface';
 
 /**
@@ -74,10 +74,9 @@ export class RoundRobinBalancer implements Balancer {
       const doId = this.env.ROUND_ROBIN_COUNTER.idFromName(`group-${groupId}`);
       const doStub = this.env.ROUND_ROBIN_COUNTER.get(doId);
 
-      const response = await doStub.fetch(
-        `https://internal/reset?groupId=${groupId}`,
-        { method: 'POST' }
-      );
+      const response = await doStub.fetch(`https://internal/reset?groupId=${groupId}`, {
+        method: 'POST',
+      });
 
       if (!response.ok) {
         throw new Error(`DO reset failed: ${response.status}`);

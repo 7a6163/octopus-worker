@@ -15,33 +15,30 @@ import type { InternalLLMResponse } from '@/types/llm';
  * RelayLog 介面
  */
 export interface RelayLogEntry {
-  time: number;                    // Unix timestamp (秒)
-  requestModelName: string;        // 請求的模型名稱
-  channelId: number;               // 使用的渠道 ID
-  channelName: string;             // 渠道名稱
-  channelKeyId: number;            // 使用的 Key ID
-  apiKeyId: number;                // 請求的 API Key ID
-  promptTokens: number;            // Prompt Token 數量
-  completionTokens: number;        // Completion Token 數量
-  cacheReadTokens: number;         // Cache Read Token 數量
-  cacheCreationTokens: number;     // Cache Creation Token 數量
-  inputCost: number;               // Input 費用
-  outputCost: number;              // Output 費用
-  cacheReadCost: number;           // Cache Read 費用
-  cacheCreationCost: number;       // Cache Creation 費用
-  totalCost: number;               // 總費用
-  waitTime: number;                // 等待時間（毫秒）
-  success: boolean;                // 是否成功
-  errorMessage: string;            // 錯誤訊息
+  time: number; // Unix timestamp (秒)
+  requestModelName: string; // 請求的模型名稱
+  channelId: number; // 使用的渠道 ID
+  channelName: string; // 渠道名稱
+  channelKeyId: number; // 使用的 Key ID
+  apiKeyId: number; // 請求的 API Key ID
+  promptTokens: number; // Prompt Token 數量
+  completionTokens: number; // Completion Token 數量
+  cacheReadTokens: number; // Cache Read Token 數量
+  cacheCreationTokens: number; // Cache Creation Token 數量
+  inputCost: number; // Input 費用
+  outputCost: number; // Output 費用
+  cacheReadCost: number; // Cache Read 費用
+  cacheCreationCost: number; // Cache Creation 費用
+  totalCost: number; // 總費用
+  waitTime: number; // 等待時間（毫秒）
+  success: boolean; // 是否成功
+  errorMessage: string; // 錯誤訊息
 }
 
 /**
  * 創建 RelayLog
  */
-export async function createRelayLog(
-  db: D1Database,
-  log: RelayLogEntry
-): Promise<void> {
+export async function createRelayLog(db: D1Database, log: RelayLogEntry): Promise<void> {
   try {
     await db
       .prepare(
@@ -82,10 +79,7 @@ export async function createRelayLog(
 /**
  * 批次創建 RelayLogs
  */
-export async function batchCreateRelayLogs(
-  db: D1Database,
-  logs: RelayLogEntry[]
-): Promise<void> {
+export async function batchCreateRelayLogs(db: D1Database, logs: RelayLogEntry[]): Promise<void> {
   if (logs.length === 0) {
     return;
   }
@@ -164,10 +158,7 @@ export async function cleanupOldLogs(db: D1Database, keepDays: number): Promise<
   const cutoffTime = Math.floor(Date.now() / 1000) - keepDays * 86400;
 
   try {
-    const result = await db
-      .prepare(`DELETE FROM relay_logs WHERE time < ?`)
-      .bind(cutoffTime)
-      .run();
+    const result = await db.prepare(`DELETE FROM relay_logs WHERE time < ?`).bind(cutoffTime).run();
 
     const deletedCount = result.meta.changes || 0;
     console.log(`Cleaned up ${deletedCount} old relay logs (older than ${keepDays} days)`);

@@ -24,10 +24,6 @@ export class RoundRobinCounter extends DurableObject {
   private writeCount = 0;
   private readonly PERSIST_INTERVAL = 100; // 每 100 次寫入持久化一次
 
-  constructor(ctx: DurableObjectState, env: any) {
-    super(ctx, env);
-  }
-
   /**
    * 初始化 Durable Object
    * 從持久化存儲載入計數器狀態
@@ -120,10 +116,7 @@ export class RoundRobinCounter extends DurableObject {
         const itemCount = parseInt(url.searchParams.get('itemCount') || '1', 10);
 
         if (!groupId || !itemCount) {
-          return Response.json(
-            { error: 'groupId and itemCount are required' },
-            { status: 400 }
-          );
+          return Response.json({ error: 'groupId and itemCount are required' }, { status: 400 });
         }
 
         const nextIndex = await this.getNext(groupId, itemCount);
@@ -162,10 +155,7 @@ export class RoundRobinCounter extends DurableObject {
 
       return Response.json({ error: 'Not found' }, { status: 404 });
     } catch (err) {
-      return Response.json(
-        { error: (err as Error).message },
-        { status: 500 }
-      );
+      return Response.json({ error: (err as Error).message }, { status: 500 });
     }
   }
 }

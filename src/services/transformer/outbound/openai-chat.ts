@@ -3,8 +3,8 @@
  * 對應原始 Go 專案的 internal/transformer/outbound/openai/chat.go
  */
 
-import type { OutboundTransformer } from '../interface';
 import type { InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
+import type { OutboundTransformer } from '../interface';
 
 export class OpenAIChatOutbound implements OutboundTransformer {
   /**
@@ -39,15 +39,15 @@ export class OpenAIChatOutbound implements OutboundTransformer {
 
     // 構建完整 URL
     const url = new URL(baseUrl.replace(/\/$/, ''));
-    url.pathname = url.pathname + '/chat/completions';
+    url.pathname = `${url.pathname}/chat/completions`;
 
     // 建立 HTTP 請求
     return new Request(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${key}`,
+        Accept: 'application/json',
+        Authorization: `Bearer ${key}`,
       },
       body,
     });

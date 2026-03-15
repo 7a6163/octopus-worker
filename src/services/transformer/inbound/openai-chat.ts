@@ -3,8 +3,8 @@
  * 對應原始 Go 專案的 internal/transformer/inbound/openai/messages.go
  */
 
-import type { InboundTransformer } from '../interface';
 import type { InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
+import type { InboundTransformer } from '../interface';
 
 export class OpenAIChatInbound implements InboundTransformer {
   private lastResponse: InternalLLMResponse | null = null;

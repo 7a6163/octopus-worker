@@ -8,9 +8,9 @@
  * - 不支援 metadata 參數
  */
 
-import { OpenAIResponseOutbound } from './openai-response';
-import type { OutboundTransformer } from '../interface';
 import type { InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
+import type { OutboundTransformer } from '../interface';
+import { OpenAIResponseOutbound } from './openai-response';
 
 /** 支援 reasoning 的模型集合 */
 const REASONING_MODELS = new Set([
@@ -33,12 +33,8 @@ export class VolcengineOutbound implements OutboundTransformer {
       // Strip metadata — Volcengine doesn't support it
       metadata: undefined,
       // Strip reasoning for non-reasoning models
-      reasoningEffort: REASONING_MODELS.has(request.model)
-        ? request.reasoningEffort
-        : undefined,
-      reasoningBudget: REASONING_MODELS.has(request.model)
-        ? request.reasoningBudget
-        : undefined,
+      reasoningEffort: REASONING_MODELS.has(request.model) ? request.reasoningEffort : undefined,
+      reasoningBudget: REASONING_MODELS.has(request.model) ? request.reasoningBudget : undefined,
     };
 
     return this.inner.transformRequest(modifiedRequest, baseUrl, key);

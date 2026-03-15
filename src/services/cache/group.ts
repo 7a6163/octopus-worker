@@ -9,10 +9,9 @@
  * - 快取穿透保護：快取 null 結果（TTL: 1 分鐘）
  */
 
-import type { KVNamespace } from '@cloudflare/workers-types';
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import { getGroupById, getGroupByModel } from '@/services/db/group';
 import type { Group } from '@/types/group';
-import { getGroupByModel, getGroupById } from '@/services/db/group';
 
 const CACHE_TTL = 300; // 5 分鐘
 const NULL_CACHE_TTL = 60; // 1 分鐘（用於快取不存在的記錄）
@@ -128,7 +127,10 @@ export async function getCachedGroupById(
 /**
  * 使快取失效（按模型名稱）
  */
-export async function invalidateGroupCacheByModel(kv: KVNamespace, modelName: string): Promise<void> {
+export async function invalidateGroupCacheByModel(
+  kv: KVNamespace,
+  modelName: string
+): Promise<void> {
   const cacheKey = getModelCacheKey(modelName);
   await kv.delete(cacheKey);
 }
@@ -144,7 +146,10 @@ export async function invalidateGroupCacheById(kv: KVNamespace, id: number): Pro
 /**
  * 使 Group 所有快取失效（包含模型名稱和 ID 索引）
  */
-export async function invalidateGroupCache(kv: KVNamespace, groupOrId: Group | number): Promise<void> {
+export async function invalidateGroupCache(
+  kv: KVNamespace,
+  groupOrId: Group | number
+): Promise<void> {
   if (typeof groupOrId === 'number') {
     // Only delete by ID cache
     await kv.delete(getIdCacheKey(groupOrId));

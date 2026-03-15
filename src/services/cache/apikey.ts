@@ -7,10 +7,9 @@
  * - 快取穿透保護：快取 null 結果（TTL: 1 分鐘）
  */
 
-import type { KVNamespace } from '@cloudflare/workers-types';
-import type { D1Database } from '@cloudflare/workers-types';
-import type { APIKey } from '@/types/apikey';
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { validateAPIKey } from '@/services/db/apikey';
+import type { APIKey } from '@/types/apikey';
 
 const CACHE_TTL = 300; // 5 分鐘
 const NULL_CACHE_TTL = 60; // 1 分鐘（用於快取不存在的記錄）

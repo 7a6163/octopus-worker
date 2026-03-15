@@ -2,7 +2,7 @@
  * Pricing 計算服務測試
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('Pricing Calculator', () => {
   describe('calculateCost', () => {

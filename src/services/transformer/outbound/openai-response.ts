@@ -7,15 +7,15 @@
  * - 將上游 Responses API 回應/流轉回內部 Chat Completions 格式
  */
 
-import type { OutboundTransformer } from '../interface';
 import type {
   InternalLLMRequest,
   InternalLLMResponse,
   Message,
-  Usage,
-  ToolCall,
   MessageContentPart,
+  ToolCall,
+  Usage,
 } from '@/types/llm';
+import type { OutboundTransformer } from '../interface';
 
 // ==================== Responses API 型別 ====================
 
@@ -133,14 +133,14 @@ export class OpenAIResponseOutbound implements OutboundTransformer {
     const responsesReq = convertToResponsesRequest(request);
 
     const url = new URL(baseUrl.replace(/\/$/, ''));
-    url.pathname = url.pathname + '/responses';
+    url.pathname = `${url.pathname}/responses`;
 
     return new Request(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${key}`,
+        Accept: 'application/json',
+        Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify(responsesReq),
     });
@@ -191,57 +191,69 @@ export class OpenAIResponseOutbound implements OutboundTransformer {
         break;
 
       case 'response.output_text.delta':
-        resp.choices = [{
-          index: 0,
-          delta: { role: 'assistant', content: { content: event.delta || '' } },
-        }];
+        resp.choices = [
+          {
+            index: 0,
+            delta: { role: 'assistant', content: { content: event.delta || '' } },
+          },
+        ];
         break;
 
       case 'response.function_call_arguments.delta':
-        resp.choices = [{
-          index: 0,
-          delta: {
-            role: 'assistant',
-            content: {},
-            toolCalls: [{
-              id: event.call_id || '',
-              type: 'function',
-              function: { name: event.name || '', arguments: event.delta || '' },
-              index: event.output_index,
-            }],
-          },
-        }];
-        break;
-
-      case 'response.output_item.added':
-        if (event.item?.type === 'function_call') {
-          resp.choices = [{
+        resp.choices = [
+          {
             index: 0,
             delta: {
               role: 'assistant',
               content: {},
-              toolCalls: [{
-                id: event.item.call_id || '',
-                type: 'function',
-                function: { name: event.item.name || '', arguments: '' },
-                index: event.output_index,
-              }],
+              toolCalls: [
+                {
+                  id: event.call_id || '',
+                  type: 'function',
+                  function: { name: event.name || '', arguments: event.delta || '' },
+                  index: event.output_index,
+                },
+              ],
             },
-          }];
+          },
+        ];
+        break;
+
+      case 'response.output_item.added':
+        if (event.item?.type === 'function_call') {
+          resp.choices = [
+            {
+              index: 0,
+              delta: {
+                role: 'assistant',
+                content: {},
+                toolCalls: [
+                  {
+                    id: event.item.call_id || '',
+                    type: 'function',
+                    function: { name: event.item.name || '', arguments: '' },
+                    index: event.output_index,
+                  },
+                ],
+              },
+            },
+          ];
         } else {
           return null;
         }
         break;
 
       case 'response.reasoning_summary_text.delta':
-        resp.choices = [{
-          index: 0,
-          delta: {
-            role: 'assistant',
-            content: {},
-            reasoningContent: event.delta || '',
+        resp.choices = [
+          {
+            index: 0,
+            delta: {
+              role: 'assistant',
+              content: {},
+              reasoningContent: event.delta || '',
+            },
           },
-        }];
+        ];
         break;
 
       case 'response.completed':
@@ -298,11 +310,13 @@ function convertToResponsesRequest(req: InternalLLMRequest): ResponsesRequest {
   }
 
   // Input from non-system messages
-  const nonSystemMsgs = req.messages.filter(
-    (m) => m.role !== 'system' && m.role !== 'developer'
-  );
+  const nonSystemMsgs = req.messages.filter((m) => m.role !== 'system' && m.role !== 'developer');
 
-  if (nonSystemMsgs.length === 1 && nonSystemMsgs[0]?.content.content && nonSystemMsgs[0].role === 'user') {
+  if (
+    nonSystemMsgs.length === 1 &&
+    nonSystemMsgs[0]?.content.content &&
+    nonSystemMsgs[0].role === 'user'
+  ) {
     result.input = nonSystemMsgs[0].content.content;
   } else {
     result.input = nonSystemMsgs.flatMap((msg) => convertMessageToResponsesItems(msg));
@@ -352,7 +366,11 @@ function convertMessageToResponsesItems(msg: Message): ResponsesItem[] {
           if (part.type === 'text' && part.text) {
             items.push({ type: 'input_text', text: part.text });
           } else if (part.type === 'image_url' && part.imageUrl) {
-            items.push({ type: 'input_image', image_url: part.imageUrl.url, detail: part.imageUrl.detail });
+            items.push({
+              type: 'input_image',
+              image_url: part.imageUrl.url,
+              detail: part.imageUrl.detail,
+            });
           }
         }
       }
@@ -378,18 +396,22 @@ function convertMessageToResponsesItems(msg: Message): ResponsesItem[] {
           type: 'message',
           role: 'assistant',
           status: 'completed',
-          content: [{ type: 'output_text', text: msg.content.content }] as unknown as ResponsesInput,
+          content: [
+            { type: 'output_text', text: msg.content.content },
+          ] as unknown as ResponsesInput,
         });
       }
       return result;
     }
 
     case 'tool':
-      return [{
-        type: 'function_call_output',
-        call_id: msg.toolCallId || '',
-        output: (msg.content.content || '') as unknown as ResponsesInput,
-      }];
+      return [
+        {
+          type: 'function_call_output',
+          call_id: msg.toolCallId || '',
+          output: (msg.content.content || '') as unknown as ResponsesInput,
+        },
+      ];
 
     default:
       return [];

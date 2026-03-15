@@ -50,11 +50,7 @@ export interface OutboundTransformer {
    * @param key 上游 API Key
    * @returns HTTP Request 物件
    */
-  transformRequest(
-    request: InternalLLMRequest,
-    baseUrl: string,
-    key: string
-  ): Promise<Request>;
+  transformRequest(request: InternalLLMRequest, baseUrl: string, key: string): Promise<Request>;
 
   /**
    * 將上游 API 回應轉換為內部格式

@@ -2,8 +2,8 @@
  * 轉換器註冊與取得
  */
 
-import type { InboundTransformer, OutboundTransformer, InboundType } from './interface';
 import type { OutboundType } from '@/types/channel';
+import type { InboundTransformer, InboundType, OutboundTransformer } from './interface';
 
 // 註冊表（Phase 1.2-1.4 逐步實作）
 const inboundRegistry: Map<string, () => InboundTransformer> = new Map();
@@ -45,24 +45,24 @@ export function getOutboundTransformer(type: OutboundType): OutboundTransformer 
   return factory();
 }
 
-// 自動註冊轉換器
-import { OpenAIChatOutbound } from './outbound/openai-chat';
-import { AnthropicOutbound } from './outbound/anthropic';
-import { OpenAIEmbeddingOutbound } from './outbound/openai-embedding';
-import { OpenAIResponseOutbound } from './outbound/openai-response';
-import { GeminiOutbound } from './outbound/gemini';
-import { VolcengineOutbound } from './outbound/volcengine';
-import { OpenAIChatInbound } from './inbound/openai-chat';
 import { AnthropicInbound } from './inbound/anthropic';
+import { OpenAIChatInbound } from './inbound/openai-chat';
 import { OpenAIEmbeddingInbound } from './inbound/openai-embedding';
 import { OpenAIResponseInbound } from './inbound/openai-response';
+import { AnthropicOutbound } from './outbound/anthropic';
+import { GeminiOutbound } from './outbound/gemini';
+// 自動註冊轉換器
+import { OpenAIChatOutbound } from './outbound/openai-chat';
+import { OpenAIEmbeddingOutbound } from './outbound/openai-embedding';
+import { OpenAIResponseOutbound } from './outbound/openai-response';
+import { VolcengineOutbound } from './outbound/volcengine';
 
-registerOutbound(0, () => new OpenAIChatOutbound());       // OutboundType.OpenAIChat
-registerOutbound(1, () => new OpenAIResponseOutbound());   // OutboundType.OpenAIResponse
-registerOutbound(2, () => new AnthropicOutbound());        // OutboundType.Anthropic
-registerOutbound(3, () => new GeminiOutbound());           // OutboundType.Gemini
-registerOutbound(4, () => new VolcengineOutbound());       // OutboundType.Volcengine
-registerOutbound(5, () => new OpenAIEmbeddingOutbound());  // OutboundType.OpenAIEmbedding
+registerOutbound(0, () => new OpenAIChatOutbound()); // OutboundType.OpenAIChat
+registerOutbound(1, () => new OpenAIResponseOutbound()); // OutboundType.OpenAIResponse
+registerOutbound(2, () => new AnthropicOutbound()); // OutboundType.Anthropic
+registerOutbound(3, () => new GeminiOutbound()); // OutboundType.Gemini
+registerOutbound(4, () => new VolcengineOutbound()); // OutboundType.Volcengine
+registerOutbound(5, () => new OpenAIEmbeddingOutbound()); // OutboundType.OpenAIEmbedding
 registerInbound('openai-chat', () => new OpenAIChatInbound());
 registerInbound('openai-response', () => new OpenAIResponseInbound());
 registerInbound('anthropic', () => new AnthropicInbound());

@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  CircuitState,
-  isTripped,
-  recordSuccess,
-  recordFailure,
-  getCooldownMs,
-  clearAll,
-  getEntryState,
-  getEntryCount,
   type CircuitBreakerSettings,
+  CircuitState,
+  clearAll,
+  getCooldownMs,
+  getEntryCount,
+  getEntryState,
+  isTripped,
+  recordFailure,
+  recordSuccess,
 } from '../services/circuit-breaker/circuit-breaker';
 
 const DEFAULT_SETTINGS: CircuitBreakerSettings = {

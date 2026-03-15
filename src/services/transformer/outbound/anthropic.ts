@@ -8,14 +8,14 @@
  * 3. SSE 流式回應轉換
  */
 
-import type { OutboundTransformer } from '../interface';
 import type {
   InternalLLMRequest,
   InternalLLMResponse,
   Message,
-  Usage,
   ToolCall,
+  Usage,
 } from '@/types/llm';
+import type { OutboundTransformer } from '../interface';
 
 // ==================== Anthropic API 類型定義 ====================
 
@@ -120,7 +120,7 @@ export class AnthropicOutbound implements OutboundTransformer {
 
     // 構建完整 URL
     const url = new URL(baseUrl.replace(/\/$/, ''));
-    url.pathname = url.pathname + '/messages';
+    url.pathname = `${url.pathname}/messages`;
 
     // 傳遞原始查詢參數
     if (request.query) {
@@ -137,9 +137,9 @@ export class AnthropicOutbound implements OutboundTransformer {
     };
 
     if (request.stream) {
-      headers['Accept'] = 'text/event-stream';
+      headers.Accept = 'text/event-stream';
     } else {
-      headers['Accept'] = 'application/json';
+      headers.Accept = 'application/json';
     }
 
     return new Request(url.toString(), {
@@ -522,19 +522,23 @@ export class AnthropicOutbound implements OutboundTransformer {
             type: 'function',
             function: { name: event.content_block.name || '', arguments: '' },
           });
-          resp.choices = [{
-            index: 0,
-            delta: {
-              role: 'assistant',
-              content: {},
-              toolCalls: [{
-                id: event.content_block.id || '',
-                type: 'function',
-                function: { name: event.content_block.name || '', arguments: '' },
-                index: this.streamState.toolIndex,
-              }],
+          resp.choices = [
+            {
+              index: 0,
+              delta: {
+                role: 'assistant',
+                content: {},
+                toolCalls: [
+                  {
+                    id: event.content_block.id || '',
+                    type: 'function',
+                    function: { name: event.content_block.name || '', arguments: '' },
+                    index: this.streamState.toolIndex,
+                  },
+                ],
+              },
             },
-          }];
+          ];
         } else {
           return null;
         }
@@ -542,38 +546,49 @@ export class AnthropicOutbound implements OutboundTransformer {
 
       case 'content_block_delta':
         if (event.delta?.type === 'text_delta' && event.delta.text) {
-          resp.choices = [{
-            index: 0,
-            delta: { role: 'assistant', content: { content: event.delta.text } },
-          }];
-        } else if (event.delta?.type === 'thinking_delta' && event.delta.thinking) {
-          resp.choices = [{
-            index: 0,
-            delta: {
-              role: 'assistant',
-              content: {},
-              reasoningContent: event.delta.thinking,
+          resp.choices = [
+            {
+              index: 0,
+              delta: { role: 'assistant', content: { content: event.delta.text } },
             },
-          }];
-        } else if (event.delta?.type === 'signature_delta') {
-          // Signature is part of thinking block — skip for internal format
-          return null;
-        } else if (event.delta?.type === 'input_json_delta' && event.delta.partial_json !== undefined) {
-          const tc = this.streamState.toolCalls.get(this.streamState.toolIndex);
-          if (tc) {
-            resp.choices = [{
+          ];
+        } else if (event.delta?.type === 'thinking_delta' && event.delta.thinking) {
+          resp.choices = [
+            {
               index: 0,
               delta: {
                 role: 'assistant',
                 content: {},
-                toolCalls: [{
-                  id: tc.id,
-                  type: 'function',
-                  function: { name: '', arguments: event.delta.partial_json },
-                  index: this.streamState.toolIndex,
-                }],
+                reasoningContent: event.delta.thinking,
               },
-            }];
+            },
+          ];
+        } else if (event.delta?.type === 'signature_delta') {
+          // Signature is part of thinking block — skip for internal format
+          return null;
+        } else if (
+          event.delta?.type === 'input_json_delta' &&
+          event.delta.partial_json !== undefined
+        ) {
+          const tc = this.streamState.toolCalls.get(this.streamState.toolIndex);
+          if (tc) {
+            resp.choices = [
+              {
+                index: 0,
+                delta: {
+                  role: 'assistant',
+                  content: {},
+                  toolCalls: [
+                    {
+                      id: tc.id,
+                      type: 'function',
+                      function: { name: '', arguments: event.delta.partial_json },
+                      index: this.streamState.toolIndex,
+                    },
+                  ],
+                },
+              },
+            ];
           } else {
             return null;
           }

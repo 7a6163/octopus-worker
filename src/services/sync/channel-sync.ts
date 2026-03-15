@@ -5,12 +5,11 @@
  * channel model lists. Supports OpenAI, Anthropic, and Gemini APIs.
  */
 
-import type { Bindings } from '@/types';
-import type { Channel, ChannelKey, CustomHeader, BaseUrl } from '@/types/channel';
-import { OutboundType } from '@/types/channel';
 import { updateSetting } from '@/services/db/settings';
 import { autoGroupChannel } from '@/services/sync/auto-group';
-import { AutoGroupType } from '@/types/channel';
+import type { Bindings } from '@/types';
+import type { BaseUrl, Channel, ChannelKey, CustomHeader } from '@/types/channel';
+import { AutoGroupType, OutboundType } from '@/types/channel';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -56,12 +55,7 @@ async function syncSingleChannel(env: Bindings, channel: Channel): Promise<void>
   const baseUrl = firstUrl.url;
   const key = firstKey.channelKey;
 
-  const models = await fetchModelsFromUpstream(
-    baseUrl,
-    key,
-    channel.type,
-    channel.customHeader
-  );
+  const models = await fetchModelsFromUpstream(baseUrl, key, channel.type, channel.customHeader);
 
   if (models.length === 0) {
     console.warn(`No models returned for channel ${channel.id}`);
@@ -81,8 +75,7 @@ async function syncSingleChannel(env: Bindings, channel: Channel): Promise<void>
   const modelList = filteredModels.join(',');
 
   // Update channel model list in DB
-  await env.DB
-    .prepare('UPDATE channels SET model = ? WHERE id = ?')
+  await env.DB.prepare('UPDATE channels SET model = ? WHERE id = ?')
     .bind(modelList, channel.id)
     .run();
 
@@ -145,9 +138,7 @@ async function fetchOpenAIModels(
   const body = (await response.json()) as { data?: Array<{ id?: string }> };
   const data = body.data ?? [];
 
-  return data
-    .map((m) => m.id ?? '')
-    .filter((id) => id.length > 0);
+  return data.map((m) => m.id ?? '').filter((id) => id.length > 0);
 }
 
 /**
@@ -242,9 +233,7 @@ async function fetchGeminiModels(
     for (const m of data) {
       if (m.name) {
         // Strip "models/" prefix from Gemini model names
-        const name = m.name.startsWith('models/')
-          ? m.name.slice('models/'.length)
-          : m.name;
+        const name = m.name.startsWith('models/') ? m.name.slice('models/'.length) : m.name;
         models.push(name);
       }
     }
@@ -279,10 +268,7 @@ function buildHeaders(
 /**
  * Fetch with a timeout to avoid hanging on unresponsive upstreams.
  */
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit
-): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -297,10 +283,7 @@ async function fetchWithTimeout(
  * Filter model names through a regex pattern.
  * Returns only models matching the pattern.
  */
-function filterModelsByRegex(
-  models: readonly string[],
-  pattern: string
-): readonly string[] {
+function filterModelsByRegex(models: readonly string[], pattern: string): readonly string[] {
   try {
     const regex = new RegExp(pattern);
     return models.filter((m) => regex.test(m));

@@ -34,10 +34,6 @@ export class StatsAggregator extends DurableObject {
     lastUpdated: Date.now(),
   };
 
-  constructor(ctx: DurableObjectState, env: any) {
-    super(ctx, env);
-  }
-
   /**
    * 初始化
    */
@@ -154,10 +150,7 @@ export class StatsAggregator extends DurableObject {
 
       return Response.json({ error: 'Not found' }, { status: 404 });
     } catch (err) {
-      return Response.json(
-        { error: (err as Error).message },
-        { status: 500 }
-      );
+      return Response.json({ error: (err as Error).message }, { status: 500 });
     }
   }
 }

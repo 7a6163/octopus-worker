@@ -141,10 +141,7 @@ export async function getAllAPIKeys(db: D1Database): Promise<APIKey[]> {
 /**
  * 創建新的 APIKey
  */
-export async function createAPIKey(
-  db: D1Database,
-  apiKey: Omit<APIKey, 'id'>
-): Promise<number> {
+export async function createAPIKey(db: D1Database, apiKey: Omit<APIKey, 'id'>): Promise<number> {
   const result = await db
     .prepare(
       `INSERT INTO api_keys

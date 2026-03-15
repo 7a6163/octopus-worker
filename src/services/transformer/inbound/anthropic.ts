@@ -3,30 +3,34 @@
  * 對應原始 Go 專案的 internal/transformer/inbound/anthropic/messages.go
  */
 
-import type { InboundTransformer } from '../interface';
 import type { InternalLLMRequest, InternalLLMResponse, Message, ToolCall } from '@/types/llm';
+import type { InboundTransformer } from '../interface';
 
 interface AnthropicRequest {
   model: string;
   messages: Array<{
     role: 'user' | 'assistant';
-    content: string | Array<{
-      type: string;
-      text?: string;
-      thinking?: string;
-      signature?: string;
-      id?: string;
-      name?: string;
-      input?: unknown;
-      tool_use_id?: string;
-      content?: string | Array<{ type: string; text?: string }>;
-      is_error?: boolean;
-      cache_control?: { type: string };
-      source?: { type: string; media_type?: string; data?: string; url?: string };
-      [key: string]: any;
-    }>;
+    content:
+      | string
+      | Array<{
+          type: string;
+          text?: string;
+          thinking?: string;
+          signature?: string;
+          id?: string;
+          name?: string;
+          input?: unknown;
+          tool_use_id?: string;
+          content?: string | Array<{ type: string; text?: string }>;
+          is_error?: boolean;
+          cache_control?: { type: string };
+          source?: { type: string; media_type?: string; data?: string; url?: string };
+          [key: string]: any;
+        }>;
   }>;
-  system?: string | Array<{ type: string; text: string; cache_control?: { type: string }; [key: string]: any }>;
+  system?:
+    | string
+    | Array<{ type: string; text: string; cache_control?: { type: string }; [key: string]: any }>;
   max_tokens: number;
   temperature?: number;
   top_p?: number;
@@ -198,11 +202,14 @@ export class AnthropicInbound implements InboundTransformer {
       const events: Array<{ type: string; data: unknown }> = [];
       // Close any open content blocks
       if (this.streamState.hasTextStarted || this.streamState.hasThinkingStarted) {
-        events.push({ type: 'content_block_stop', data: { type: 'content_block_stop', index: this.streamState.contentBlockIndex } });
+        events.push({
+          type: 'content_block_stop',
+          data: { type: 'content_block_stop', index: this.streamState.contentBlockIndex },
+        });
       }
       events.push({ type: 'message_stop', data: { type: 'message_stop' } });
       return new TextEncoder().encode(
-        events.map((e) => `event: ${e.type}\ndata: ${JSON.stringify(e.data)}\n`).join('\n') + '\n'
+        `${events.map((e) => `event: ${e.type}\ndata: ${JSON.stringify(e.data)}\n`).join('\n')}\n`
       );
     }
 
@@ -213,8 +220,10 @@ export class AnthropicInbound implements InboundTransformer {
       return null;
     }
 
-    const lines = events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n`);
-    return new TextEncoder().encode(lines.join('\n') + '\n');
+    const lines = events.map(
+      (event) => `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n`
+    );
+    return new TextEncoder().encode(`${lines.join('\n')}\n`);
   }
 
   /**
@@ -279,11 +288,12 @@ export class AnthropicInbound implements InboundTransformer {
         // User messages — may contain text, images, or tool_result
         for (const block of msg.content) {
           if (block.type === 'tool_result') {
-            const toolContent = typeof block.content === 'string'
-              ? block.content
-              : Array.isArray(block.content)
-                ? block.content.map((c) => c.text || '').join('')
-                : '';
+            const toolContent =
+              typeof block.content === 'string'
+                ? block.content
+                : Array.isArray(block.content)
+                  ? block.content.map((c) => c.text || '').join('')
+                  : '';
             result.push({
               role: 'tool',
               content: { content: toolContent },
@@ -305,12 +315,16 @@ export class AnthropicInbound implements InboundTransformer {
             result.push({
               role: 'user',
               content: {
-                multipleContent: [{
-                  type: 'image_url',
-                  imageUrl: {
-                    url: block.source.url || `data:${block.source.media_type};base64,${block.source.data}`,
+                multipleContent: [
+                  {
+                    type: 'image_url',
+                    imageUrl: {
+                      url:
+                        block.source.url ||
+                        `data:${block.source.media_type};base64,${block.source.data}`,
+                    },
                   },
-                }],
+                ],
               },
             });
           }
@@ -382,7 +396,9 @@ export class AnthropicInbound implements InboundTransformer {
   /**
    * 轉換為 Anthropic 流式事件
    */
-  private convertToAnthropicStreamEvents(stream: InternalLLMResponse): Array<{ type: string; data: unknown }> {
+  private convertToAnthropicStreamEvents(
+    stream: InternalLLMResponse
+  ): Array<{ type: string; data: unknown }> {
     const events: Array<{ type: string; data: unknown }> = [];
     const choice = stream.choices[0];
     const state = this.streamState!;
@@ -404,12 +420,14 @@ export class AnthropicInbound implements InboundTransformer {
             model: stream.model,
             content: [],
             stop_reason: null,
-            usage: stream.usage ? {
-              input_tokens: stream.usage.promptTokens,
-              output_tokens: 0,
-              cache_creation_input_tokens: stream.usage.cacheCreationInputTokens,
-              cache_read_input_tokens: stream.usage.cacheReadInputTokens,
-            } : undefined,
+            usage: stream.usage
+              ? {
+                  input_tokens: stream.usage.promptTokens,
+                  output_tokens: 0,
+                  cache_creation_input_tokens: stream.usage.cacheCreationInputTokens,
+                  cache_read_input_tokens: stream.usage.cacheReadInputTokens,
+                }
+              : undefined,
           },
         },
       });
@@ -528,9 +546,7 @@ export class AnthropicInbound implements InboundTransformer {
           delta: {
             stop_reason: this.convertFinishReason(choice.finishReason || ''),
           },
-          usage: stream.usage
-            ? { output_tokens: stream.usage.completionTokens }
-            : undefined,
+          usage: stream.usage ? { output_tokens: stream.usage.completionTokens } : undefined,
         },
       });
     }

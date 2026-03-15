@@ -7,12 +7,8 @@
  * - 將內部 Embedding 回應轉回客戶端格式
  */
 
+import type { EmbeddingObject, InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
 import type { InboundTransformer } from '../interface';
-import type {
-  InternalLLMRequest,
-  InternalLLMResponse,
-  EmbeddingObject,
-} from '@/types/llm';
 
 interface OpenAIEmbeddingRequest {
   model: string;

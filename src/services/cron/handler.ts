@@ -7,10 +7,10 @@
  * - 每天：清理過期日誌
  */
 
-import type { Bindings } from '@/types';
 import { cleanupOldLogs } from '@/services/log/relay-log';
-import { syncModelPricing } from '@/services/sync/price-sync';
 import { syncChannelModels } from '@/services/sync/channel-sync';
+import { syncModelPricing } from '@/services/sync/price-sync';
+import type { Bindings } from '@/types';
 
 /**
  * 處理定時任務

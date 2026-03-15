@@ -5,9 +5,9 @@
  * Runs on an hourly cron schedule.
  */
 
-import type { Bindings } from '@/types';
-import { batchUpsertPricing, type PricingInfo } from '@/services/pricing/calculator';
 import { updateSetting } from '@/services/db/settings';
+import { batchUpsertPricing, type PricingInfo } from '@/services/pricing/calculator';
+import type { Bindings } from '@/types';
 
 /** Providers supported by this system */
 const SUPPORTED_PROVIDERS = [
@@ -53,9 +53,7 @@ export async function syncModelPricing(env: Bindings): Promise<number> {
   const response = await fetch(MODELS_API_URL);
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch model pricing: ${response.status} ${response.statusText}`
-    );
+    throw new Error(`Failed to fetch model pricing: ${response.status} ${response.statusText}`);
   }
 
   const data = (await response.json()) as ModelsDevResponse;

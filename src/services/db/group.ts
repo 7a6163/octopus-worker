@@ -193,13 +193,28 @@ export async function createGroup(db: D1Database, data: any): Promise<number> {
 export async function updateGroup(db: D1Database, id: number, updates: any): Promise<void> {
   const fields: string[] = [];
   const values: any[] = [];
-  if (updates.name) { fields.push('name = ?'); values.push(updates.name); }
-  if (updates.model) { fields.push('model = ?'); values.push(updates.model); }
-  if (updates.mode !== undefined) { fields.push('mode = ?'); values.push(updates.mode); }
-  if (updates.enabled !== undefined) { fields.push('enabled = ?'); values.push(updates.enabled ? 1 : 0); }
+  if (updates.name) {
+    fields.push('name = ?');
+    values.push(updates.name);
+  }
+  if (updates.model) {
+    fields.push('model = ?');
+    values.push(updates.model);
+  }
+  if (updates.mode !== undefined) {
+    fields.push('mode = ?');
+    values.push(updates.mode);
+  }
+  if (updates.enabled !== undefined) {
+    fields.push('enabled = ?');
+    values.push(updates.enabled ? 1 : 0);
+  }
   if (fields.length > 0) {
     values.push(id);
-    await db.prepare('UPDATE groups SET ' + fields.join(', ') + ' WHERE id = ?').bind(...values).run();
+    await db
+      .prepare(`UPDATE groups SET ${fields.join(', ')} WHERE id = ?`)
+      .bind(...values)
+      .run();
   }
 }
 

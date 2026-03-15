@@ -2,8 +2,8 @@
  * JWT 認證服務測試
  */
 
-import { describe, it, expect } from 'vitest';
-import { signJWT, verifyJWT, refreshToken } from '../services/auth/jwt';
+import { describe, expect, it } from 'vitest';
+import { refreshToken, signJWT, verifyJWT } from '../services/auth/jwt';
 
 describe('JWT Service', () => {
   const testSecret = 'test-secret-key';

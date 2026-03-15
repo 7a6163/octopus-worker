@@ -3,9 +3,9 @@
  * 對應原始 Go 專案的 internal/balancer/interface.go
  */
 
+import type { Bindings } from '@/types';
 import type { Group, GroupItem } from '@/types/group';
 import { GroupMode } from '@/types/group';
-import type { Bindings } from '@/types';
 
 /**
  * 負載平衡器介面
@@ -26,10 +26,10 @@ export interface Balancer {
   reset(groupId: number): Promise<void>;
 }
 
+import { FailoverBalancer } from './failover';
+import { RandomBalancer } from './random';
 // 導入所有負載平衡器
 import { RoundRobinBalancer } from './round-robin';
-import { RandomBalancer } from './random';
-import { FailoverBalancer } from './failover';
 import { WeightedBalancer } from './weighted';
 
 /**
@@ -43,9 +43,9 @@ export function getBalancer(mode: GroupMode, env: Bindings): Balancer {
     case GroupMode.RoundRobin:
       return new RoundRobinBalancer(env);
     case GroupMode.Random:
-      return new RandomBalancer(env);
+      return new RandomBalancer();
     case GroupMode.Failover:
-      return new FailoverBalancer(env);
+      return new FailoverBalancer();
     case GroupMode.Weighted:
       return new WeightedBalancer(env);
     default:
@@ -60,10 +60,7 @@ export function getBalancer(mode: GroupMode, env: Bindings): Balancer {
  * @param excludeIds 需要排除的 ID
  * @returns 可用的 GroupItems
  */
-export function filterAvailableItems(
-  items: GroupItem[],
-  excludeIds?: Set<number>
-): GroupItem[] {
+export function filterAvailableItems(items: GroupItem[], excludeIds?: Set<number>): GroupItem[] {
   if (!excludeIds || excludeIds.size === 0) {
     return items;
   }

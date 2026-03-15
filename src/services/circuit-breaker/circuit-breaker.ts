@@ -19,8 +19,8 @@
 // ==================== 狀態定義 ====================
 
 export enum CircuitState {
-  Closed = 0,   // 正常通行
-  Open = 1,     // 熔斷中，拒絕所有請求
+  Closed = 0, // 正常通行
+  Open = 1, // 熔斷中，拒絕所有請求
   HalfOpen = 2, // 半開，僅允許單個試探請求
 }
 
@@ -40,7 +40,7 @@ interface CircuitEntry {
   state: CircuitState;
   consecutiveFailures: number;
   lastFailureTime: number; // ms timestamp
-  tripCount: number;       // 累計熔斷觸發次數（用於指數退避）
+  tripCount: number; // 累計熔斷觸發次數（用於指數退避）
 }
 
 // ==================== 全域儲存 ====================
@@ -146,9 +146,7 @@ export function isTripped(
       if (elapsed >= cooldownMs) {
         // 冷卻結束，轉為 HalfOpen
         entry.state = CircuitState.HalfOpen;
-        console.log(
-          `circuit breaker [${key}] Open -> HalfOpen (cooldown ${cooldownMs}ms elapsed)`
-        );
+        console.log(`circuit breaker [${key}] Open -> HalfOpen (cooldown ${cooldownMs}ms elapsed)`);
         return { tripped: false, remainingMs: 0 };
       }
 
@@ -168,11 +166,7 @@ export function isTripped(
 /**
  * 記錄成功，重置熔斷器狀態
  */
-export function recordSuccess(
-  channelId: number,
-  keyId: number,
-  modelName: string
-): void {
+export function recordSuccess(channelId: number, keyId: number, modelName: string): void {
   const key = circuitKey(channelId, keyId, modelName);
   const entry = globalBreaker.get(key);
 

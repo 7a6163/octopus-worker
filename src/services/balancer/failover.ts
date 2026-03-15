@@ -8,19 +8,14 @@
  * - 支援排除失敗的項目
  */
 
-import type { Balancer } from './interface';
 import type { Group, GroupItem } from '@/types/group';
-import type { Bindings } from '@/types';
+import type { Balancer } from './interface';
 import { filterAvailableItems } from './interface';
 
 /**
  * Failover 負載平衡器
  */
 export class FailoverBalancer implements Balancer {
-  constructor(_env: Bindings) {
-    // Failover 模式不需要環境變數
-  }
-
   /**
    * 選擇下一個 GroupItem（按優先級）
    */

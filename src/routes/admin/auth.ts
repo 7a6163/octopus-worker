@@ -10,9 +10,9 @@
  */
 
 import { Hono } from 'hono';
+import { extractTokenFromHeader, refreshToken, signJWT, verifyJWT } from '@/services/auth/jwt';
+import { getUserById, validateCredentials } from '@/services/db/user';
 import type { Bindings, Variables } from '@/types';
-import { signJWT, verifyJWT, refreshToken, extractTokenFromHeader } from '@/services/auth/jwt';
-import { validateCredentials, getUserById } from '@/services/db/user';
 
 const auth = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -137,7 +137,7 @@ auth.post('/refresh', async (c) => {
         refreshed: result.refreshed,
       },
     });
-  } catch (err) {
+  } catch (_err) {
     return c.json(
       {
         code: 401,
@@ -197,7 +197,7 @@ auth.get('/me', async (c) => {
         enabled: user.enabled,
       },
     });
-  } catch (err) {
+  } catch (_err) {
     return c.json(
       {
         code: 401,

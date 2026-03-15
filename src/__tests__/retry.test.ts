@@ -2,7 +2,7 @@
  * Retry 策略測試
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { calculateRetryDelay } from '../services/retry/strategy';
 
 describe('Retry Strategy', () => {
@@ -48,9 +48,7 @@ describe('Retry Strategy', () => {
         jitter: true,
       };
 
-      const delays = Array.from({ length: 10 }, () =>
-        calculateRetryDelay(0, config)
-      );
+      const delays = Array.from({ length: 10 }, () => calculateRetryDelay(0, config));
 
       // With jitter, delays should vary
       const uniqueDelays = new Set(delays);

@@ -3,16 +3,16 @@
  */
 
 import { Hono } from 'hono';
-import type { Bindings, Variables } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { loginRateLimit } from '@/middleware/rate-limit';
+import type { Bindings, Variables } from '@/types';
+import apikeyRoutes from './apikeys';
 import authRoutes from './auth';
 import channelRoutes from './channels';
 import groupRoutes from './groups';
-import apikeyRoutes from './apikeys';
-import userRoutes from './users';
-import statsRoutes from './stats';
 import settingsRoutes from './settings';
+import statsRoutes from './stats';
+import userRoutes from './users';
 
 const admin = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

@@ -11,27 +11,31 @@
  */
 
 import type { Context } from 'hono';
-import type { Bindings, Variables } from '@/types';
-import type { InternalLLMRequest } from '@/types/llm';
-import type { Channel, ChannelKey, BaseUrl } from '@/types/channel';
-import { getInboundTransformer, getOutboundTransformer } from '@/services/transformer';
-import type { InboundType, InboundTransformer, OutboundTransformer } from '@/services/transformer/interface';
-import { getCachedGroupByModel } from '@/services/cache/group';
-import { getCachedChannel } from '@/services/cache/channel';
-import { updateChannelKeyStatus } from '@/services/db/channel';
 import { getBalancer } from '@/services/balancer/interface';
-import { calculateCost } from '@/services/pricing/calculator';
-import { createRelayLog } from '@/services/log/relay-log';
+import { getCachedChannel } from '@/services/cache/channel';
+import { getCachedGroupByModel } from '@/services/cache/group';
 import {
-  isTripped,
-  recordSuccess,
-  recordFailure,
   type CircuitBreakerSettings,
-  SETTING_KEY_CIRCUIT_BREAKER_THRESHOLD,
+  isTripped,
+  recordFailure,
+  recordSuccess,
   SETTING_KEY_CIRCUIT_BREAKER_COOLDOWN,
   SETTING_KEY_CIRCUIT_BREAKER_MAX_COOLDOWN,
+  SETTING_KEY_CIRCUIT_BREAKER_THRESHOLD,
 } from '@/services/circuit-breaker/circuit-breaker';
+import { updateChannelKeyStatus } from '@/services/db/channel';
 import { getNumberSetting } from '@/services/db/settings';
+import { createRelayLog } from '@/services/log/relay-log';
+import { calculateCost } from '@/services/pricing/calculator';
+import { getInboundTransformer, getOutboundTransformer } from '@/services/transformer';
+import type {
+  InboundTransformer,
+  InboundType,
+  OutboundTransformer,
+} from '@/services/transformer/interface';
+import type { Bindings, Variables } from '@/types';
+import type { BaseUrl, Channel, ChannelKey } from '@/types/channel';
+import type { InternalLLMRequest } from '@/types/llm';
 
 const MAX_ROUNDS = 3; // 最大重試輪數
 
@@ -153,9 +157,10 @@ export async function relayHandler(
       // 熔斷檢查：跳過已熔斷的 channel+key+model 組合
       const trippedResult = isTripped(channel.id, usedKey.id, item.modelName, cbSettings);
       if (trippedResult.tripped) {
-        const remainMsg = trippedResult.remainingMs > 0
-          ? `, remaining cooldown: ${Math.ceil(trippedResult.remainingMs / 1000)}s`
-          : '';
+        const remainMsg =
+          trippedResult.remainingMs > 0
+            ? `, remaining cooldown: ${Math.ceil(trippedResult.remainingMs / 1000)}s`
+            : '';
         console.log(
           `Circuit breaker tripped: channel=${channel.name}, key=${usedKey.id}, ` +
             `model=${item.modelName}${remainMsg}`
@@ -212,19 +217,16 @@ export async function relayHandler(
 
           // 記錄統計
           try {
-            await recordStatistics(
-              c.env,
-              {
-                apiKeyId: apiKeyId || 0,
-                channelId: channel.id,
-                channelName: channel.name,
-                channelKeyId: usedKey.id,
-                requestModelName: requestForChannel.model,
-                success: true,
-                waitTime: attemptDuration,
-                tokenUsage: result.tokenUsage,
-              }
-            );
+            await recordStatistics(c.env, {
+              apiKeyId: apiKeyId || 0,
+              channelId: channel.id,
+              channelName: channel.name,
+              channelKeyId: usedKey.id,
+              requestModelName: requestForChannel.model,
+              success: true,
+              waitTime: attemptDuration,
+              tokenUsage: result.tokenUsage,
+            });
           } catch (statsErr) {
             console.error('Failed to record statistics:', statsErr);
           }
@@ -262,19 +264,16 @@ export async function relayHandler(
 
   // 記錄失敗統計
   try {
-    await recordStatistics(
-      c.env,
-      {
-        apiKeyId: apiKeyId || 0,
-        channelId: 0,
-        channelName: 'unknown',
-        channelKeyId: 0,
-        requestModelName: requestModel,
-        success: false,
-        waitTime: 0,
-        errorMessage,
-      }
-    );
+    await recordStatistics(c.env, {
+      apiKeyId: apiKeyId || 0,
+      channelId: 0,
+      channelName: 'unknown',
+      channelKeyId: 0,
+      requestModelName: requestModel,
+      success: false,
+      waitTime: 0,
+      errorMessage,
+    });
   } catch (statsErr) {
     console.error('Failed to record failure statistics:', statsErr);
   }
@@ -308,7 +307,13 @@ async function forwardRequest(
   channel: Channel,
   usedKey: ChannelKey,
   firstTokenTimeOutSec: number
-): Promise<{ success: boolean; response?: Response; statusCode?: number; error?: Error; tokenUsage?: TokenUsage }> {
+): Promise<{
+  success: boolean;
+  response?: Response;
+  statusCode?: number;
+  error?: Error;
+  tokenUsage?: TokenUsage;
+}> {
   // 建構出站請求
   const baseUrl = selectBestBaseUrl(channel.baseUrls);
   const outboundRequest = await outAdapter.transformRequest(
@@ -343,13 +348,7 @@ async function forwardRequest(
 
   // 處理回應
   if (internalRequest.stream) {
-    return handleStreamResponse(
-      c,
-      response,
-      inAdapter,
-      outAdapter,
-      firstTokenTimeOutSec
-    );
+    return handleStreamResponse(c, response, inAdapter, outAdapter, firstTokenTimeOutSec);
   } else {
     return handleNonStreamResponse(c, response, inAdapter, outAdapter);
   }
@@ -364,7 +363,13 @@ async function handleStreamResponse(
   inAdapter: InboundTransformer,
   outAdapter: OutboundTransformer,
   firstTokenTimeOutSec: number
-): Promise<{ success: boolean; response?: Response; statusCode?: number; error?: Error; tokenUsage?: TokenUsage }> {
+): Promise<{
+  success: boolean;
+  response?: Response;
+  statusCode?: number;
+  error?: Error;
+  tokenUsage?: TokenUsage;
+}> {
   const contentType = response.headers.get('Content-Type') || '';
   if (!contentType.toLowerCase().includes('text/event-stream')) {
     const body = await response.text();
@@ -404,7 +409,10 @@ async function handleStreamResponse(
       const reader = response.body?.getReader();
       if (!reader) {
         await writer.close().catch(() => {});
-        if (!resolved) { resolved = true; resolve({ received: false }); }
+        if (!resolved) {
+          resolved = true;
+          resolve({ received: false });
+        }
         return;
       }
 
@@ -434,8 +442,14 @@ async function handleStreamResponse(
 
               if (firstToken) {
                 firstToken = false;
-                if (timer) { clearTimeout(timer); timer = null; }
-                if (!resolved) { resolved = true; resolve({ received: true }); }
+                if (timer) {
+                  clearTimeout(timer);
+                  timer = null;
+                }
+                if (!resolved) {
+                  resolved = true;
+                  resolve({ received: true });
+                }
               }
 
               if (!aborted) await writer.write(outStream);
@@ -447,7 +461,10 @@ async function handleStreamResponse(
       } finally {
         if (!aborted) await writer.close().catch(() => {});
         // If no data was ever written and no timeout, resolve as success (empty stream)
-        if (!resolved) { resolved = true; resolve({ received: true }); }
+        if (!resolved) {
+          resolved = true;
+          resolve({ received: true });
+        }
       }
     })();
 
@@ -472,7 +489,7 @@ async function handleStreamResponse(
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
         'X-Accel-Buffering': 'no',
       },
     }),
@@ -487,7 +504,13 @@ async function handleNonStreamResponse(
   response: Response,
   inAdapter: InboundTransformer,
   outAdapter: OutboundTransformer
-): Promise<{ success: boolean; response?: Response; statusCode?: number; error?: Error; tokenUsage?: TokenUsage }> {
+): Promise<{
+  success: boolean;
+  response?: Response;
+  statusCode?: number;
+  error?: Error;
+  tokenUsage?: TokenUsage;
+}> {
   try {
     // 轉換回應：上游 → 內部 → 客戶端
     const internalResponse = await outAdapter.transformResponse(response);

@@ -16,6 +16,10 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc --noEmit",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/",
+    "format": "biome format --write src/",
+    "check": "tsc --noEmit && biome check src/",
     "cf-typegen": "wrangler types",
     "db:create": "wrangler d1 create octopus-db",
     "db:create:dev": "wrangler d1 create octopus-db-dev",
@@ -38,11 +42,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "hono": "^4.6.14",
     "@hono/zod-validator": "^0.4.1",
+    "hono": "^4.6.14",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.7",
     "@cloudflare/workers-types": "^4.20241127.0",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",

@@ -15,8 +15,8 @@ export interface JWTPayload {
   userId: number;
   username: string;
   role: 'admin' | 'user';
-  iat: number;  // Issued At
-  exp: number;  // Expiration Time
+  iat: number; // Issued At
+  exp: number; // Expiration Time
 }
 
 /**

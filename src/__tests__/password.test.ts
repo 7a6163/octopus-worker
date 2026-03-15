@@ -2,7 +2,7 @@
  * Password 雜湊服務測試
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { hashPassword, verifyPassword } from '../services/auth/password';
 
 describe('Password Service', () => {

@@ -8,14 +8,14 @@
  * - system/developer 訊息放入 systemInstruction
  */
 
-import type { OutboundTransformer } from '../interface';
 import type {
   InternalLLMRequest,
   InternalLLMResponse,
   Message,
-  Usage,
   ToolCall,
+  Usage,
 } from '@/types/llm';
+import type { OutboundTransformer } from '../interface';
 
 // ==================== Gemini API 類型定義 ====================
 
@@ -115,9 +115,7 @@ export class GeminiOutbound implements OutboundTransformer {
 
     // 構建 URL：/models/{model}:generateContent 或 :streamGenerateContent
     const cleanBase = baseUrl.replace(/\/$/, '');
-    const method = request.stream
-      ? 'streamGenerateContent'
-      : 'generateContent';
+    const method = request.stream ? 'streamGenerateContent' : 'generateContent';
     const streamParam = request.stream ? '?alt=sse' : '';
     const urlStr = `${cleanBase}/models/${modelName}:${method}${streamParam}`;
 
@@ -125,7 +123,7 @@ export class GeminiOutbound implements OutboundTransformer {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': request.stream ? 'text/event-stream' : 'application/json',
+        Accept: request.stream ? 'text/event-stream' : 'application/json',
         'X-Goog-Api-Key': key,
       },
       body: JSON.stringify(geminiReq),
@@ -208,13 +206,13 @@ export class GeminiOutbound implements OutboundTransformer {
       delta.toolCalls = toolCalls;
     }
 
-    resp.choices = [{
-      index: 0,
-      delta,
-      finishReason: candidate.finishReason
-        ? mapFinishReason(candidate.finishReason)
-        : undefined,
-    }];
+    resp.choices = [
+      {
+        index: 0,
+        delta,
+        finishReason: candidate.finishReason ? mapFinishReason(candidate.finishReason) : undefined,
+      },
+    ];
 
     if (geminiResp.usageMetadata) {
       resp.usage = convertUsage(geminiResp.usageMetadata);
@@ -260,13 +258,15 @@ function buildGeminiRequest(req: InternalLLMRequest): GeminiRequest {
 
   // Tools
   if (req.tools && req.tools.length > 0) {
-    result.tools = [{
-      functionDeclarations: req.tools.map((t) => ({
-        name: t.function.name,
-        description: t.function.description,
-        parameters: t.function.parameters,
-      })),
-    }];
+    result.tools = [
+      {
+        functionDeclarations: req.tools.map((t) => ({
+          name: t.function.name,
+          description: t.function.description,
+          parameters: t.function.parameters,
+        })),
+      },
+    ];
   }
 
   // Tool choice
@@ -360,19 +360,21 @@ function convertToolMessage(msg: Message): GeminiContent {
 
   return {
     role: 'user',
-    parts: [{
-      functionResponse: {
-        name: msg.toolCallId || 'unknown',
-        response: responseData,
+    parts: [
+      {
+        functionResponse: {
+          name: msg.toolCallId || 'unknown',
+          response: responseData,
+        },
       },
-    }],
+    ],
   };
 }
 
 function parseImageUrl(url: string): { mimeType: string; data: string } | null {
   // Handle data URLs: data:image/png;base64,<data>
   const match = url.match(/^data:([^;]+);base64,(.+)$/);
-  if (match && match[1] && match[2]) {
+  if (match?.[1] && match[2]) {
     return { mimeType: match[1], data: match[2] };
   }
   return null;
@@ -434,9 +436,10 @@ function buildGenerationConfig(req: InternalLLMRequest): GeminiGenerationConfig 
   return hasConfig ? config : null;
 }
 
-function convertResponseFormat(
-  format: { type: string; jsonSchema?: { schema: Record<string, unknown> } }
-): { responseMimeType?: string; responseSchema?: unknown } {
+function convertResponseFormat(format: {
+  type: string;
+  jsonSchema?: { schema: Record<string, unknown> };
+}): { responseMimeType?: string; responseSchema?: unknown } {
   switch (format.type) {
     case 'json_object':
       return { responseMimeType: 'application/json' };
@@ -452,9 +455,10 @@ function convertResponseFormat(
   }
 }
 
-function convertToolChoice(
-  choice: { type: string; function?: { name: string } }
-): GeminiFunctionCallingConfig | null {
+function convertToolChoice(choice: {
+  type: string;
+  function?: { name: string };
+}): GeminiFunctionCallingConfig | null {
   switch (choice.type) {
     case 'auto':
       return { mode: 'AUTO' };
@@ -499,10 +503,7 @@ function convertGeminiResponse(geminiResp: GeminiResponse): InternalLLMResponse 
 
     if (message.content.content) {
       message.content = {
-        multipleContent: [
-          { type: 'text' as const, text: message.content.content },
-          ...parts,
-        ],
+        multipleContent: [{ type: 'text' as const, text: message.content.content }, ...parts],
       };
     } else {
       message.content = { multipleContent: parts };
@@ -522,16 +523,14 @@ function convertGeminiResponse(geminiResp: GeminiResponse): InternalLLMResponse 
     object: 'chat.completion',
     created: Math.floor(Date.now() / 1000),
     model: geminiResp.modelVersion,
-    choices: [{
-      index: 0,
-      message,
-      finishReason: candidate.finishReason
-        ? mapFinishReason(candidate.finishReason)
-        : 'stop',
-    }],
-    usage: geminiResp.usageMetadata
-      ? convertUsage(geminiResp.usageMetadata)
-      : undefined,
+    choices: [
+      {
+        index: 0,
+        message,
+        finishReason: candidate.finishReason ? mapFinishReason(candidate.finishReason) : 'stop',
+      },
+    ],
+    usage: geminiResp.usageMetadata ? convertUsage(geminiResp.usageMetadata) : undefined,
   };
 }
 

@@ -10,10 +10,10 @@
  */
 
 import { Hono } from 'hono';
-import type { Bindings, Variables } from '@/types';
 import { apiKeyAuth } from '@/middleware/auth';
-import { requireJson, validateBodySize } from '@/middleware/validate';
 import { relayRateLimit } from '@/middleware/rate-limit';
+import { requireJson, validateBodySize } from '@/middleware/validate';
+import type { Bindings, Variables } from '@/types';
 import { relayHandler } from './handler';
 
 const relay = new Hono<{ Bindings: Bindings; Variables: Variables }>();

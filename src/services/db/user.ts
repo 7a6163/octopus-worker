@@ -101,10 +101,7 @@ export async function getAllUsers(db: D1Database): Promise<Omit<User, 'password'
 /**
  * 創建新的 User
  */
-export async function createUser(
-  db: D1Database,
-  user: Omit<User, 'id'>
-): Promise<number> {
+export async function createUser(db: D1Database, user: Omit<User, 'id'>): Promise<number> {
   const result = await db
     .prepare(
       `INSERT INTO users (username, password, role, enabled)
@@ -112,7 +109,7 @@ export async function createUser(
     )
     .bind(
       user.username,
-      user.password,  // 應該已經是雜湊過的密碼
+      user.password, // 應該已經是雜湊過的密碼
       user.role,
       user.enabled ? 1 : 0
     )
@@ -134,13 +131,7 @@ export async function updateUser(db: D1Database, user: User): Promise<void> {
            enabled = ?
        WHERE id = ?`
     )
-    .bind(
-      user.username,
-      user.password,
-      user.role,
-      user.enabled ? 1 : 0,
-      user.id
-    )
+    .bind(user.username, user.password, user.role, user.enabled ? 1 : 0, user.id)
     .run();
 }
 

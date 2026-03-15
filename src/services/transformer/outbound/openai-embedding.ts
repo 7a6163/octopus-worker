@@ -7,12 +7,8 @@
  * - 將上游 Embedding 回應轉回內部格式
  */
 
+import type { EmbeddingObject, InternalLLMRequest, InternalLLMResponse } from '@/types/llm';
 import type { OutboundTransformer } from '../interface';
-import type {
-  InternalLLMRequest,
-  InternalLLMResponse,
-  EmbeddingObject,
-} from '@/types/llm';
 
 interface UpstreamEmbeddingResponse {
   id: string;
@@ -42,24 +38,24 @@ export class OpenAIEmbeddingOutbound implements OutboundTransformer {
     };
 
     if (request.embeddingDimensions !== undefined) {
-      bodyObj['dimensions'] = request.embeddingDimensions;
+      bodyObj.dimensions = request.embeddingDimensions;
     }
     if (request.embeddingEncodingFormat !== undefined) {
-      bodyObj['encoding_format'] = request.embeddingEncodingFormat;
+      bodyObj.encoding_format = request.embeddingEncodingFormat;
     }
     if (request.user !== undefined) {
-      bodyObj['user'] = request.user;
+      bodyObj.user = request.user;
     }
 
     const url = new URL(baseUrl.replace(/\/$/, ''));
-    url.pathname = url.pathname + '/embeddings';
+    url.pathname = `${url.pathname}/embeddings`;
 
     return new Request(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${key}`,
+        Accept: 'application/json',
+        Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify(bodyObj),
     });

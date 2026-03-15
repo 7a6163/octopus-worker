@@ -2,19 +2,19 @@
  * Channels 管理 API
  */
 
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
 import { z } from 'zod';
-import type { Bindings, Variables } from '@/types';
-import {
-  listChannels,
-  getChannel,
-  createChannel,
-  updateChannel,
-  deleteChannel,
-} from '@/services/db/channel';
 import { invalidateChannelCache } from '@/services/cache/channel';
+import {
+  createChannel,
+  deleteChannel,
+  getChannel,
+  listChannels,
+  updateChannel,
+} from '@/services/db/channel';
 import { fetchModelsFromUpstream, syncChannelModels } from '@/services/sync/channel-sync';
+import type { Bindings, Variables } from '@/types';
 
 const channels = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -65,8 +65,8 @@ channels.get('/', async (c) => {
  * 獲取指定 channel
  */
 channels.get('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的 channel ID' }, 400);
   }
 
@@ -118,8 +118,8 @@ channels.post('/', zValidator('json', createChannelSchema), async (c) => {
  * 更新 channel
  */
 channels.put('/:id', zValidator('json', updateChannelSchema), async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的 channel ID' }, 400);
   }
 
@@ -152,8 +152,8 @@ channels.put('/:id', zValidator('json', updateChannelSchema), async (c) => {
  * 刪除 channel
  */
 channels.delete('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
-  if (isNaN(id)) {
+  const id = parseInt(c.req.param('id'), 10);
+  if (Number.isNaN(id)) {
     return c.json({ code: 400, message: '無效的 channel ID' }, 400);
   }
 

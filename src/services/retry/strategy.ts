@@ -12,24 +12,24 @@
  * 錯誤類型分類
  */
 export enum ErrorType {
-  NetworkError = 'network_error',          // 網路錯誤（可重試）
-  RateLimitError = 'rate_limit_error',     // 429 錯誤（需要退避）
-  ServerError = 'server_error',            // 5xx 錯誤（可重試）
-  ClientError = 'client_error',            // 4xx 錯誤（不可重試）
-  TimeoutError = 'timeout_error',          // 超時錯誤（可重試）
-  AuthError = 'auth_error',                // 認證錯誤（不可重試）
-  Unknown = 'unknown',                     // 未知錯誤
+  NetworkError = 'network_error', // 網路錯誤（可重試）
+  RateLimitError = 'rate_limit_error', // 429 錯誤（需要退避）
+  ServerError = 'server_error', // 5xx 錯誤（可重試）
+  ClientError = 'client_error', // 4xx 錯誤（不可重試）
+  TimeoutError = 'timeout_error', // 超時錯誤（可重試）
+  AuthError = 'auth_error', // 認證錯誤（不可重試）
+  Unknown = 'unknown', // 未知錯誤
 }
 
 /**
  * 重試配置
  */
 export interface RetryConfig {
-  maxRetries: number;           // 最大重試次數
-  initialDelayMs: number;       // 初始延遲（毫秒）
-  maxDelayMs: number;           // 最大延遲（毫秒）
-  multiplier: number;           // 延遲倍數
-  jitter: boolean;              // 是否添加隨機抖動
+  maxRetries: number; // 最大重試次數
+  initialDelayMs: number; // 初始延遲（毫秒）
+  maxDelayMs: number; // 最大延遲（毫秒）
+  multiplier: number; // 延遲倍數
+  jitter: boolean; // 是否添加隨機抖動
 }
 
 /**
@@ -37,10 +37,10 @@ export interface RetryConfig {
  */
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxRetries: 3,
-  initialDelayMs: 1000,         // 1 秒
-  maxDelayMs: 30000,            // 30 秒
-  multiplier: 2,                // 指數倍數
-  jitter: true,                 // 啟用抖動
+  initialDelayMs: 1000, // 1 秒
+  maxDelayMs: 30000, // 30 秒
+  multiplier: 2, // 指數倍數
+  jitter: true, // 啟用抖動
 };
 
 /**
@@ -111,7 +111,7 @@ export function calculateRetryDelay(
   config: RetryConfig = DEFAULT_RETRY_CONFIG
 ): number {
   // 指數退避: delay = initialDelay * (multiplier ^ attempt)
-  let delay = config.initialDelayMs * Math.pow(config.multiplier, attempt);
+  let delay = config.initialDelayMs * config.multiplier ** attempt;
 
   // 限制最大延遲
   delay = Math.min(delay, config.maxDelayMs);
@@ -146,10 +146,7 @@ export class RetryStrategy {
   /**
    * 判斷是否應該重試
    */
-  shouldRetry(
-    attempt: number,
-    errorType: ErrorType
-  ): { retry: boolean; delayMs: number } {
+  shouldRetry(attempt: number, errorType: ErrorType): { retry: boolean; delayMs: number } {
     // 超過最大重試次數
     if (attempt >= this.config.maxRetries) {
       return { retry: false, delayMs: 0 };
@@ -192,10 +189,7 @@ export class RetryStrategy {
         }
 
         // 判斷錯誤類型
-        const errorType = classifyError(
-          (err as any).statusCode || 0,
-          lastError.message
-        );
+        const errorType = classifyError((err as any).statusCode || 0, lastError.message);
 
         // 判斷是否重試
         const { retry, delayMs } = this.shouldRetry(attempt, errorType);

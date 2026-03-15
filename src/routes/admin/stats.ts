@@ -3,8 +3,8 @@
  */
 
 import { Hono } from 'hono';
-import type { Bindings, Variables } from '@/types';
 import { syncModelPricing } from '@/services/sync/price-sync';
+import type { Bindings, Variables } from '@/types';
 
 const stats = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -52,8 +52,8 @@ stats.get('/', async (c) => {
  */
 stats.get('/logs', async (c) => {
   try {
-    const limit = parseInt(c.req.query('limit') || '100');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = parseInt(c.req.query('limit') || '100', 10);
+    const offset = parseInt(c.req.query('offset') || '0', 10);
     const apiKeyId = c.req.query('api_key_id');
     const channelId = c.req.query('channel_id');
     const success = c.req.query('success');
@@ -64,12 +64,12 @@ stats.get('/logs', async (c) => {
 
     if (apiKeyId) {
       query += ' AND api_key_id = ?';
-      bindings.push(parseInt(apiKeyId));
+      bindings.push(parseInt(apiKeyId, 10));
     }
 
     if (channelId) {
       query += ' AND channel_id = ?';
-      bindings.push(parseInt(channelId));
+      bindings.push(parseInt(channelId, 10));
     }
 
     if (success !== undefined) {
@@ -198,7 +198,7 @@ stats.get('/date-range', async (c) => {
       FROM relay_logs
       WHERE time >= ? AND time <= ?`
     )
-      .bind(parseInt(startDate), parseInt(endDate))
+      .bind(parseInt(startDate, 10), parseInt(endDate, 10))
       .first<{
         total_requests: number;
         success_requests: number;
@@ -227,8 +227,8 @@ stats.get('/date-range', async (c) => {
     return c.json({
       code: 200,
       data: {
-        startDate: parseInt(startDate),
-        endDate: parseInt(endDate),
+        startDate: parseInt(startDate, 10),
+        endDate: parseInt(endDate, 10),
         totalRequests: result.total_requests,
         successRequests: result.success_requests,
         failedRequests: result.failed_requests,
@@ -328,9 +328,7 @@ stats.get('/hourly', async (c) => {
       }>();
 
     // Build 24 hourly slots, filling missing hours with zeros
-    const hourlyMap = new Map(
-      (result.results ?? []).map((r) => [r.hour, r])
-    );
+    const hourlyMap = new Map((result.results ?? []).map((r) => [r.hour, r]));
 
     const hourly = Array.from({ length: 24 }, (_, i) => {
       const row = hourlyMap.get(i);
@@ -373,18 +371,17 @@ stats.get('/channels', async (c) => {
       WHERE channel_id IS NOT NULL
       GROUP BY channel_id
       ORDER BY total_requests DESC`
-    )
-      .all<{
-        channel_id: number;
-        channel_name: string;
-        total_requests: number;
-        success_requests: number;
-        failed_requests: number;
-        total_input_tokens: number;
-        total_output_tokens: number;
-        total_cost: number;
-        avg_use_time: number;
-      }>();
+    ).all<{
+      channel_id: number;
+      channel_name: string;
+      total_requests: number;
+      success_requests: number;
+      failed_requests: number;
+      total_input_tokens: number;
+      total_output_tokens: number;
+      total_cost: number;
+      avg_use_time: number;
+    }>();
 
     const channels = (result.results ?? []).map((row) => ({
       channelId: row.channel_id,
@@ -425,18 +422,17 @@ stats.get('/apikeys', async (c) => {
       FROM stats_apikey sa
       LEFT JOIN api_keys ak ON ak.id = sa.api_key_id
       ORDER BY sa.request_success + sa.request_failed DESC`
-    )
-      .all<{
-        api_key_id: number;
-        api_key_name: string | null;
-        input_token: number;
-        output_token: number;
-        input_cost: number;
-        output_cost: number;
-        wait_time: number;
-        request_success: number;
-        request_failed: number;
-      }>();
+    ).all<{
+      api_key_id: number;
+      api_key_name: string | null;
+      input_token: number;
+      output_token: number;
+      input_cost: number;
+      output_cost: number;
+      wait_time: number;
+      request_success: number;
+      request_failed: number;
+    }>();
 
     const apikeys = (result.results ?? []).map((row) => ({
       apiKeyId: row.api_key_id,
@@ -484,14 +480,13 @@ stats.get('/model-list', async (c) => {
       `SELECT name, input, output, cache_read, cache_write
        FROM llm_infos
        ORDER BY name ASC`
-    )
-      .all<{
-        name: string;
-        input: number;
-        output: number;
-        cache_read: number;
-        cache_write: number;
-      }>();
+    ).all<{
+      name: string;
+      input: number;
+      output: number;
+      cache_read: number;
+      cache_write: number;
+    }>();
 
     const models = (result.results ?? []).map((row) => ({
       name: row.name,
