@@ -1,0 +1,21 @@
+{
+  "name": "octopus-workers-ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && wrangler pages deploy dist --project-name octopus-ui"
+  },
+  "dependencies": {
+    "preact": "^10.25.4",
+    "preact-router": "^4.1.2"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.3.5"
+  }
+}

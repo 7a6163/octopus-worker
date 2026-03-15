@@ -29,7 +29,10 @@
     "kv:create": "wrangler kv namespace create CACHE",
     "kv:create:dev": "wrangler kv namespace create CACHE --env dev",
     "secret:put": "wrangler secret put",
-    "logs": "wrangler tail --format pretty"
+    "logs": "wrangler tail --format pretty",
+    "ui:dev": "cd ui && npx vite",
+    "ui:build": "cd ui && npx vite build",
+    "ui:deploy": "cd ui && npx vite build && npx wrangler pages deploy dist --project-name octopus-ui"
   },
   "keywords": [
     "llm",
