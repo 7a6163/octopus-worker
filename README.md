@@ -1,6 +1,13 @@
-# Octopus Workers
+<p align="center">
+  <img src="ui/public/logo.svg" width="120" alt="Octopus Workers" />
+</p>
 
-LLM API aggregation and load balancing service running on Cloudflare Workers. Acts as a reverse proxy that accepts requests in OpenAI/Anthropic formats, routes them through configurable channels (upstream LLM providers), and returns responses in the client's expected format.
+<h1 align="center">Octopus Workers</h1>
+
+<p align="center">
+  LLM API aggregation and load balancing service running on Cloudflare Workers.<br/>
+  Acts as a reverse proxy that accepts requests in OpenAI/Anthropic formats, routes them through configurable channels (upstream LLM providers), and returns responses in the client's expected format.
+</p>
 
 ## Table of Contents
 
