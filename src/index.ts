@@ -18,17 +18,30 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 // Logging
 app.use('*', logger());
 
-// CORS
+// CORS — allow origins from CORS_ORIGINS env var (comma-separated), or all origins if unset (local dev)
 app.use(
   '/api/*',
   cors({
-    origin: '*',
+    origin: (origin, c) => {
+      const allowedRaw = c.env.CORS_ORIGINS;
+      if (!allowedRaw) return origin; // env var not set — allow all (local dev)
+      const allowed = allowedRaw.split(',').map((s: string) => s.trim());
+      return allowed.includes(origin) ? origin : '';
+    },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     exposeHeaders: ['Content-Length'],
     maxAge: 86400,
   })
 );
+
+// Security response headers
+app.use('*', async (c, next) => {
+  await next();
+  c.res.headers.set('X-Content-Type-Options', 'nosniff');
+  c.res.headers.set('X-Frame-Options', 'DENY');
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+});
 
 // Request ID and timestamp
 app.use('*', async (c, next) => {

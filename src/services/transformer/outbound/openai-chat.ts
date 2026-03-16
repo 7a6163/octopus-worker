@@ -16,14 +16,16 @@ export class OpenAIChatOutbound implements OutboundTransformer {
     key: string
   ): Promise<Request> {
     // Clean helper fields
-    const cleanedRequest = this.cleanHelpFields(request);
+    let cleanedRequest = this.cleanHelpFields(request);
 
     // Convert developer role to system role (OpenAI doesn't support developer)
-    for (const msg of cleanedRequest.messages) {
-      if (msg.role === 'developer') {
-        msg.role = 'system';
-      }
-    }
+    // Use immutable mapping instead of mutating in place
+    cleanedRequest = {
+      ...cleanedRequest,
+      messages: cleanedRequest.messages.map((msg) =>
+        msg.role === 'developer' ? { ...msg, role: 'system' as const } : msg
+      ),
+    };
 
     // Ensure streaming responses include usage info
     if (cleanedRequest.stream) {

@@ -6,6 +6,20 @@ import { Hono } from 'hono';
 import { getAllSettings, updateSetting } from '@/services/db/settings';
 import type { Bindings, Variables } from '@/types';
 
+/** Allowlist of valid setting keys that may be updated via the API. */
+const VALID_SETTING_KEYS = new Set([
+  // Core settings (from initial migration)
+  'proxy_url',
+  'stats_save_interval',
+  'cors_allow_origins',
+  'model_info_update_interval',
+  'sync_llm_interval',
+  // Circuit breaker settings
+  'circuit_breaker_threshold',
+  'circuit_breaker_cooldown',
+  'circuit_breaker_max_cooldown',
+]);
+
 const settings = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**
@@ -28,6 +42,10 @@ settings.get('/', async (c) => {
  */
 settings.put('/:key', async (c) => {
   const key = c.req.param('key');
+
+  if (!VALID_SETTING_KEYS.has(key)) {
+    return c.json({ code: 400, message: `Unknown setting key: ${key}` }, 400);
+  }
 
   try {
     const body = await c.req.json<{ value: string }>();

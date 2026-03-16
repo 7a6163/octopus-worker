@@ -48,29 +48,50 @@ function base64UrlDecode(str: string): string {
 }
 
 /**
+ * Import an HMAC-SHA256 key for signing
+ */
+async function importHmacKey(secret: string, usages: string[]): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  return crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, usages);
+}
+
+/**
  * Sign with HMAC-SHA256
  */
 async function sign(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
   const messageData = encoder.encode(message);
 
-  // Import HMAC key
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  // Sign
+  const key = await importHmacKey(secret, ['sign']);
   const signature = await crypto.subtle.sign('HMAC', key, messageData);
 
   // Convert to base64url
   const signatureArray = Array.from(new Uint8Array(signature));
   const signatureString = String.fromCharCode(...signatureArray);
   return base64UrlEncode(signatureString);
+}
+
+/**
+ * Verify an HMAC-SHA256 signature using constant-time comparison
+ */
+async function verifySignature(
+  message: string,
+  signatureB64: string,
+  secret: string
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const messageData = encoder.encode(message);
+
+  // Decode the base64url signature back to raw bytes
+  const signatureString = base64UrlDecode(signatureB64);
+  const signatureBytes = new Uint8Array(signatureString.length);
+  for (let i = 0; i < signatureString.length; i++) {
+    signatureBytes[i] = signatureString.charCodeAt(i);
+  }
+
+  const key = await importHmacKey(secret, ['verify']);
+  return crypto.subtle.verify('HMAC', key, signatureBytes, messageData);
 }
 
 /**
@@ -117,18 +138,20 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
     throw new Error('Invalid JWT format');
   }
 
-  const [headerEncoded, payloadEncoded, signature] = parts;
+  const headerEncoded = parts[0] as string;
+  const payloadEncoded = parts[1] as string;
+  const signature = parts[2] as string;
 
-  // Verify signature
+  // Verify signature using constant-time comparison
   const message = `${headerEncoded}.${payloadEncoded}`;
-  const expectedSignature = await sign(message, secret);
+  const isValid = await verifySignature(message, signature, secret);
 
-  if (signature !== expectedSignature) {
+  if (!isValid) {
     throw new Error('Invalid JWT signature');
   }
 
   // Decode payload
-  const payloadString = base64UrlDecode(payloadEncoded!);
+  const payloadString = base64UrlDecode(payloadEncoded);
   const payload = JSON.parse(payloadString) as JWTPayload;
 
   // Check expiration

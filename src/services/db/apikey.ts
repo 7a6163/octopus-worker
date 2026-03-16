@@ -68,6 +68,22 @@ export async function validateAPIKey(db: D1Database, key: string): Promise<APIKe
     return null;
   }
 
+  // Check if cost limit exceeded (0 means no limit)
+  if (apiKey.maxCost > 0) {
+    const costResult = await db
+      .prepare(
+        `SELECT COALESCE(SUM(input_cost + output_cost), 0) as total
+         FROM relay_logs
+         WHERE api_key_id = ?`
+      )
+      .bind(apiKey.id)
+      .first<{ total: number }>();
+
+    if (costResult && costResult.total >= apiKey.maxCost) {
+      return null;
+    }
+  }
+
   return apiKey;
 }
 

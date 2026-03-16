@@ -25,13 +25,26 @@ interface RateLimitOptions {
  * On Workers, KV writes are eventually consistent, so this is best-effort
  * rather than strictly precise — acceptable for abuse prevention.
  */
+/**
+ * Hash a string to a hex-encoded SHA-256 digest.
+ * Used to avoid storing plaintext API keys in KV keys.
+ */
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function rateLimit(opts: RateLimitOptions) {
   const windowSec = opts.windowSec ?? 60;
 
   return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {
-    const key = opts.keyFn(c);
-    if (!key) return await next();
+    const rawKey = opts.keyFn(c);
+    if (!rawKey) return await next();
 
+    // Hash the key to avoid storing sensitive values (e.g. API keys) in KV keys
+    const key = await sha256Hex(rawKey);
     const cacheKey = `rl:${key}:${Math.floor(Date.now() / (windowSec * 1000))}`;
 
     try {

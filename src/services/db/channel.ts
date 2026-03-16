@@ -241,7 +241,7 @@ export async function updateChannelKeyStatus(
   db: D1Database,
   keyId: number,
   statusCode: number,
-  totalCost: number
+  costDelta: number
 ): Promise<void> {
   const nowSec = Math.floor(Date.now() / 1000);
 
@@ -250,10 +250,10 @@ export async function updateChannelKeyStatus(
       `UPDATE channel_keys
        SET status_code = ?,
            last_use_time_stamp = ?,
-           total_cost = ?
+           total_cost = total_cost + ?
        WHERE id = ?`
     )
-    .bind(statusCode, nowSec, totalCost, keyId)
+    .bind(statusCode, nowSec, costDelta, keyId)
     .run();
 }
 

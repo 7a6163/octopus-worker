@@ -63,5 +63,28 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   }
 
   const computedHash = await pbkdf2Hash(password, salt);
-  return computedHash === hash;
+  return constantTimeEqual(computedHash, hash);
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * XORs all bytes and checks the result is zero.
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    // Still do work to avoid leaking length difference via timing
+    // Compare a against itself to burn equivalent CPU time
+    let dummy = 0;
+    for (let i = 0; i < a.length; i++) {
+      dummy |= a.charCodeAt(i) ^ a.charCodeAt(0);
+    }
+    // Always return false for length mismatch; use dummy to prevent dead code elimination
+    return dummy < 0 && dummy > 0;
+  }
+
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }

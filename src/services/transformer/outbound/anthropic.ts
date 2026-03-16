@@ -118,9 +118,11 @@ export class AnthropicOutbound implements OutboundTransformer {
   ): Promise<Request> {
     const anthropicReq = this.convertToAnthropicRequest(request);
 
-    // Build full URL
+    // Build full URL, avoiding double /messages
     const url = new URL(baseUrl.replace(/\/$/, ''));
-    url.pathname = `${url.pathname}/messages`;
+    if (!url.pathname.endsWith('/messages')) {
+      url.pathname = `${url.pathname}/messages`;
+    }
 
     // Pass through original query parameters
     if (request.query) {

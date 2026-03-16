@@ -238,6 +238,8 @@ export async function updateGroup(
 }
 
 export async function deleteGroup(db: D1Database, id: number): Promise<void> {
-  await db.prepare('DELETE FROM group_items WHERE group_id = ?').bind(id).run();
-  await db.prepare('DELETE FROM groups WHERE id = ?').bind(id).run();
+  await db.batch([
+    db.prepare('DELETE FROM group_items WHERE group_id = ?').bind(id),
+    db.prepare('DELETE FROM groups WHERE id = ?').bind(id),
+  ]);
 }

@@ -10,6 +10,7 @@ import { autoGroupChannel } from '@/services/sync/auto-group';
 import type { Bindings } from '@/types';
 import type { BaseUrl, Channel, ChannelKey, CustomHeader } from '@/types/channel';
 import { AutoGroupType, OutboundType } from '@/types/channel';
+import { validateOutboundUrl } from '@/utils/url-validation';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -54,6 +55,13 @@ async function syncSingleChannel(env: Bindings, channel: Channel): Promise<void>
   if (!firstUrl || !firstKey) return;
   const baseUrl = firstUrl.url;
   const key = firstKey.channelKey;
+
+  // SSRF protection: validate base URL before making outbound requests
+  const urlCheck = validateOutboundUrl(baseUrl);
+  if (!urlCheck.valid) {
+    console.warn(`Channel ${channel.id} has unsafe base URL (${urlCheck.error}), skipping`);
+    return;
+  }
 
   const models = await fetchModelsFromUpstream(baseUrl, key, channel.type, channel.customHeader);
 
@@ -209,7 +217,6 @@ async function fetchGeminiModels(
 
   for (;;) {
     const url = new URL(`${baseUrl}/models`);
-    url.searchParams.set('key', key);
     if (pageToken) {
       url.searchParams.set('pageToken', pageToken);
     }
@@ -283,13 +290,26 @@ async function fetchWithTimeout(url: string, init: RequestInit): Promise<Respons
  * Filter model names through a regex pattern.
  * Returns only models matching the pattern.
  */
+/**
+ * Check if a regex pattern contains nested quantifiers that could cause ReDoS.
+ * Rejects patterns like (a+)+ or (a*){2,} etc.
+ */
+function hasNestedQuantifiers(pattern: string): boolean {
+  return /(\+|\*|\{).*(\+|\*|\{)/.test(pattern);
+}
+
 function filterModelsByRegex(models: readonly string[], pattern: string): readonly string[] {
+  if (hasNestedQuantifiers(pattern)) {
+    console.error(`Rejected regex pattern with nested quantifiers: ${pattern}`);
+    return [...models];
+  }
+
   try {
     const regex = new RegExp(pattern);
     return models.filter((m) => regex.test(m));
   } catch (err) {
     console.error(`Invalid match_regex pattern: ${pattern}`, err);
-    return models;
+    return [...models];
   }
 }
 

@@ -52,8 +52,11 @@ stats.get('/', async (c) => {
  */
 stats.get('/logs', async (c) => {
   try {
-    const limit = parseInt(c.req.query('limit') || '100', 10);
-    const offset = parseInt(c.req.query('offset') || '0', 10);
+    const MAX_LIMIT = 500;
+    const rawLimit = parseInt(c.req.query('limit') || '100', 10);
+    const rawOffset = parseInt(c.req.query('offset') || '0', 10);
+    const limit = Number.isNaN(rawLimit) ? 100 : Math.min(Math.max(rawLimit, 1), MAX_LIMIT);
+    const offset = Number.isNaN(rawOffset) ? 0 : Math.max(rawOffset, 0);
     const apiKeyId = c.req.query('api_key_id');
     const channelId = c.req.query('channel_id');
     const success = c.req.query('success');

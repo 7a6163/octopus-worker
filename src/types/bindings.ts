@@ -15,6 +15,7 @@ export interface Bindings {
   // Environment variables
   JWT_SECRET?: string;
   ENVIRONMENT?: 'development' | 'production';
+  CORS_ORIGINS?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export interface Variables {
   // Authentication
   userId?: number;
   username?: string;
+  role?: 'admin' | 'user';
   apiKeyId?: number;
   apiKeyName?: string;
   supportedModels?: string;

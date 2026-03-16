@@ -3,11 +3,11 @@
  */
 
 import { Hono } from 'hono';
-import { jwtAuth } from '@/middleware/auth';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { loginRateLimit } from '@/middleware/rate-limit';
 import type { Bindings, Variables } from '@/types';
 import apikeyRoutes from './apikeys';
-import authRoutes from './auth';
+import { authProtectedRoutes, authPublicRoutes } from './auth';
 import channelRoutes from './channels';
 import groupRoutes from './groups';
 import settingsRoutes from './settings';
@@ -19,11 +19,14 @@ const admin = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 // Rate limiting on login endpoint only (per IP, 20 req/min)
 admin.use('/auth/login', loginRateLimit());
 
-// Auth routes (no JWT required)
-admin.route('/auth', authRoutes);
+// Public auth routes (no JWT required) - login, logout
+admin.route('/auth', authPublicRoutes);
 
 // Routes below require JWT authentication
 admin.use('/*', jwtAuth());
+
+// Protected auth routes (JWT required) - me, refresh
+admin.route('/auth', authProtectedRoutes);
 
 // Health check
 admin.get('/health', (c) => {
@@ -40,7 +43,14 @@ admin.get('/health', (c) => {
   });
 });
 
-// Admin routes
+// Admin routes (require admin role)
+admin.use('/channels/*', requireAdmin());
+admin.use('/groups/*', requireAdmin());
+admin.use('/apikeys/*', requireAdmin());
+admin.use('/users/*', requireAdmin());
+admin.use('/stats/*', requireAdmin());
+admin.use('/settings/*', requireAdmin());
+
 admin.route('/channels', channelRoutes);
 admin.route('/groups', groupRoutes);
 admin.route('/apikeys', apikeyRoutes);

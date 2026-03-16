@@ -151,8 +151,21 @@ export async function invalidateGroupCache(
   groupOrId: Group | number
 ): Promise<void> {
   if (typeof groupOrId === 'number') {
-    // Only delete by ID cache
-    await kv.delete(getIdCacheKey(groupOrId));
+    // Try to read the cached group first so we can also delete the model-name key
+    const idCacheKey = getIdCacheKey(groupOrId);
+    const cached = await kv.get(idCacheKey, 'text');
+
+    if (cached && cached !== '__NULL__') {
+      try {
+        const cachedGroup = JSON.parse(cached) as Group;
+        await Promise.all([kv.delete(idCacheKey), kv.delete(getModelCacheKey(cachedGroup.name))]);
+        return;
+      } catch {
+        // Parse failed; fall through to delete ID key only
+      }
+    }
+
+    await kv.delete(idCacheKey);
   } else {
     // Delete both model and ID caches
     await Promise.all([

@@ -29,7 +29,12 @@ export const requireJson = () => {
 };
 
 /**
- * Validate request body size
+ * Validate request body size via Content-Length header (defense-in-depth).
+ *
+ * Note: This only checks the Content-Length header — clients can omit or
+ * spoof it. The Cloudflare Workers platform enforces a hard 100 MB request
+ * body limit regardless, so this serves as an early rejection for
+ * well-behaved clients rather than a security boundary.
  */
 export const validateBodySize = (maxSizeBytes: number) => {
   return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {

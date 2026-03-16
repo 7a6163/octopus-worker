@@ -2,25 +2,30 @@
  * Authentication API routes
  * Corresponds to the original Go project's internal/handler/auth.go
  *
- * Endpoints:
+ * Public endpoints (no JWT required):
  * - POST /api/v1/auth/login - User login
  * - POST /api/v1/auth/logout - User logout
+ *
+ * Protected endpoints (JWT required, handled by jwtAuth middleware):
  * - POST /api/v1/auth/refresh - Refresh token
  * - GET /api/v1/auth/me - Get current user info
  */
 
 import { Hono } from 'hono';
-import { extractTokenFromHeader, refreshToken, signJWT, verifyJWT } from '@/services/auth/jwt';
+import { extractTokenFromHeader, refreshToken, signJWT } from '@/services/auth/jwt';
 import { getUserById, validateCredentials } from '@/services/db/user';
 import type { Bindings, Variables } from '@/types';
 
-const auth = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+/**
+ * Public auth routes (no JWT required)
+ */
+const authPublicRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**
  * POST /api/v1/auth/login
  * User login
  */
-auth.post('/login', async (c) => {
+authPublicRoutes.post('/login', async (c) => {
   try {
     const body = await c.req.json<{ username: string; password: string }>();
 
@@ -92,7 +97,7 @@ auth.post('/login', async (c) => {
  * POST /api/v1/auth/logout
  * User logout (client deletes token)
  */
-auth.post('/logout', async (c) => {
+authPublicRoutes.post('/logout', async (c) => {
   // JWT is stateless; logout is handled client-side (delete token)
   // For server-side logout, a token blacklist via KV storage could be used
   return c.json({
@@ -102,10 +107,15 @@ auth.post('/logout', async (c) => {
 });
 
 /**
- * POST /api/v1/auth/refresh
- * Refresh token
+ * Protected auth routes (JWT required - middleware applied in index.ts)
  */
-auth.post('/refresh', async (c) => {
+const authProtectedRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+/**
+ * POST /api/v1/auth/refresh
+ * Refresh token (JWT verified by middleware)
+ */
+authProtectedRoutes.post('/refresh', async (c) => {
   try {
     const authHeader = c.req.header('Authorization') || null;
     const oldToken = extractTokenFromHeader(authHeader);
@@ -150,32 +160,23 @@ auth.post('/refresh', async (c) => {
 
 /**
  * GET /api/v1/auth/me
- * Get current user info (requires JWT authentication)
+ * Get current user info (JWT verified by middleware)
  */
-auth.get('/me', async (c) => {
+authProtectedRoutes.get('/me', async (c) => {
   try {
-    const authHeader = c.req.header('Authorization') || null;
-    const token = extractTokenFromHeader(authHeader);
-
-    if (!token) {
+    const userId = c.get('userId');
+    if (!userId) {
       return c.json(
         {
           code: 401,
-          message: 'Token not provided',
+          message: 'Authentication failed',
         },
         401
       );
     }
 
-    // Verify JWT
-    const jwtSecret = c.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return c.json({ code: 500, message: 'Server misconfiguration' }, 500);
-    }
-    const payload = await verifyJWT(token, jwtSecret);
-
     // Fetch latest user info from database
-    const user = await getUserById(c.env.DB, payload.userId);
+    const user = await getUserById(c.env.DB, userId);
 
     if (!user) {
       return c.json(
@@ -208,4 +209,4 @@ auth.get('/me', async (c) => {
   }
 });
 
-export default auth;
+export { authProtectedRoutes, authPublicRoutes };

@@ -208,12 +208,8 @@ export async function relayHandler(
           );
 
           // Update key status in DB
-          await updateChannelKeyStatus(
-            c.env.DB,
-            usedKey.id,
-            result.statusCode || 200,
-            usedKey.totalCost
-          );
+          // TODO: pass actual request cost delta once cost is calculated before this point
+          await updateChannelKeyStatus(c.env.DB, usedKey.id, result.statusCode || 200, 0);
 
           // Record statistics
           try {
@@ -250,7 +246,7 @@ export async function relayHandler(
 
         // Update key status in DB (especially for 429 errors)
         const statusCode = error.statusCode || 500;
-        await updateChannelKeyStatus(c.env.DB, usedKey.id, statusCode, usedKey.totalCost);
+        await updateChannelKeyStatus(c.env.DB, usedKey.id, statusCode, 0);
 
         // Mark as failed
         excludeIds.add(item.id);

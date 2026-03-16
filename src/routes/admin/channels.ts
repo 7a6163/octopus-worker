@@ -15,6 +15,18 @@ import {
 } from '@/services/db/channel';
 import { fetchModelsFromUpstream, syncChannelModels } from '@/services/sync/channel-sync';
 import type { Bindings, Variables } from '@/types';
+import type { ChannelKey } from '@/types/channel';
+import { validateOutboundUrl } from '@/utils/url-validation';
+
+/**
+ * Mask a channel key, showing only the first 8 characters.
+ */
+function maskChannelKey(key: ChannelKey): ChannelKey {
+  return {
+    ...key,
+    channelKey: key.channelKey.length > 8 ? `${key.channelKey.slice(0, 8)}...` : '***',
+  };
+}
 
 const channels = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -66,9 +78,13 @@ const updateChannelSchema = z.object({
 channels.get('/', async (c) => {
   try {
     const channelList = await listChannels(c.env.DB);
+    const maskedList = channelList.map((ch) => ({
+      ...ch,
+      keys: ch.keys.map(maskChannelKey),
+    }));
     return c.json({
       code: 200,
-      data: channelList,
+      data: maskedList,
     });
   } catch (err) {
     console.error('Failed to list channels:', err);
@@ -97,9 +113,13 @@ channels.get('/:id', async (c) => {
     if (!channel) {
       return c.json({ code: 404, message: 'Channel not found' }, 404);
     }
+    const maskedChannel = {
+      ...channel,
+      keys: channel.keys.map(maskChannelKey),
+    };
     return c.json({
       code: 200,
-      data: channel,
+      data: maskedChannel,
     });
   } catch (err) {
     console.error('Failed to get channel:', err);
@@ -232,27 +252,9 @@ channels.post('/fetch-model', async (c) => {
     }
 
     // SSRF protection: only allow http/https and reject private/loopback addresses
-    try {
-      const parsed = new URL(body.base_url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return c.json({ code: 400, message: 'Only http/https URLs are allowed' }, 400);
-      }
-      const host = parsed.hostname.toLowerCase();
-      if (
-        host === 'localhost' ||
-        host === '127.0.0.1' ||
-        host === '::1' ||
-        host === '0.0.0.0' ||
-        host.startsWith('10.') ||
-        host.startsWith('172.') ||
-        host.startsWith('192.168.') ||
-        host.endsWith('.internal') ||
-        host.endsWith('.local')
-      ) {
-        return c.json({ code: 400, message: 'Private/internal URLs are not allowed' }, 400);
-      }
-    } catch {
-      return c.json({ code: 400, message: 'Invalid URL' }, 400);
+    const urlCheck = validateOutboundUrl(body.base_url);
+    if (!urlCheck.valid) {
+      return c.json({ code: 400, message: urlCheck.error ?? 'Invalid URL' }, 400);
     }
 
     const models = await fetchModelsFromUpstream(body.base_url, body.key, body.type, []);

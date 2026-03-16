@@ -123,11 +123,15 @@ export const jwtAuth = () => {
       if (!jwtSecret) {
         return c.json({ code: 500, message: 'Server misconfiguration: JWT_SECRET not set' }, 500);
       }
+      if (jwtSecret.length < 32) {
+        return c.json({ code: 500, message: 'Server misconfiguration: JWT_SECRET too short' }, 500);
+      }
       const payload = await verifyJWT(token, jwtSecret);
 
       // Set context
       c.set('userId', payload.userId);
       c.set('username', payload.username);
+      c.set('role', payload.role);
 
       return await next();
     } catch (err) {
@@ -146,3 +150,24 @@ export const jwtAuth = () => {
  * Admin authentication (JWT)
  */
 export const adminAuth = jwtAuth;
+
+/**
+ * Role-based authorization middleware
+ * Requires jwtAuth to run first (sets 'role' in context)
+ * Returns 403 if user is not an admin
+ */
+export const requireAdmin = () => {
+  return createMiddleware<{ Bindings: Bindings; Variables: Variables }>(async (c, next) => {
+    const role = c.get('role');
+    if (role !== 'admin') {
+      return c.json(
+        {
+          code: 403,
+          message: 'Forbidden: admin access required',
+        },
+        403
+      );
+    }
+    return await next();
+  });
+};
