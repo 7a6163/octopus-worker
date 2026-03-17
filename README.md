@@ -935,6 +935,82 @@ Each channel+key+model combination has an independent circuit breaker:
 | `npm run db:migrate:dev` | Apply D1 migrations locally |
 | `npm run db:migrate:remote` | Apply D1 migrations to production |
 
+## Comparison with Octopus (Go)
+
+This project is a Cloudflare Workers rewrite of [Octopus](https://github.com/bestruirui/octopus/). Here's how they compare:
+
+### Tech Stack
+
+| | Octopus (Go) | Octopus Workers |
+|---|---|---|
+| **Language** | Go 1.24 | TypeScript |
+| **Runtime** | Self-hosted binary / Docker | Cloudflare Workers (edge) |
+| **Frontend** | Next.js (embedded in binary) | Preact + Vite + Tailwind CSS v4 |
+| **Database** | SQLite / MySQL / PostgreSQL | Cloudflare D1 (SQLite) |
+| **Cache** | In-memory | Workers KV |
+| **State** | In-process memory | Durable Objects |
+| **Deployment** | Docker / binary / source | `wrangler deploy` (serverless) |
+| **UI Hosting** | Embedded in backend binary | Cloudflare Pages (separate) |
+| **Linter** | — | Biome |
+
+### Features
+
+| Feature | Octopus (Go) | Octopus Workers |
+|---|:---:|:---:|
+| OpenAI Chat Completions | ✅ | ✅ |
+| OpenAI Responses API | ✅ | ✅ |
+| OpenAI Embeddings | — | ✅ |
+| Anthropic Messages | ✅ | ✅ |
+| Google Gemini | ✅ | ✅ |
+| Volcengine / Doubao | — | ✅ |
+| Streaming (SSE) | ✅ | ✅ |
+| Load Balancing (4 modes) | ✅ | ✅ |
+| Circuit Breaker | ✅ | ✅ |
+| Retry with Failover | ✅ | ✅ |
+| Auto Model Sync | ✅ | ✅ |
+| Auto Group Assignment | ✅ | ✅ |
+| Price Sync (models.dev) | ✅ | ✅ |
+| Cost Tracking | ✅ | ✅ |
+| API Key Quota (maxCost) | ✅ | ✅ |
+| Rate Limiting | — | ✅ (KV-based) |
+| RBAC (admin/user roles) | ✅ | ✅ |
+| Request Logging | ✅ | ✅ |
+| Admin Dashboard | ✅ | ✅ |
+| Cron Jobs | ✅ (in-process) | ✅ (Workers Cron Triggers) |
+| Multi-DB Support | ✅ (SQLite/MySQL/PG) | — (D1 only) |
+| Docker Support | ✅ | — (serverless) |
+| Mobile Responsive UI | ✅ | ✅ |
+| SSRF Protection | — | ✅ |
+| Security Headers | — | ✅ |
+| Constant-time Auth | — | ✅ |
+
+### Architecture
+
+| Aspect | Octopus (Go) | Octopus Workers |
+|---|---|---|
+| **Scaling** | Vertical (single process) | Horizontal (edge, auto-scale) |
+| **Cold Start** | None (long-running) | ~0ms (Workers isolate) |
+| **Global Latency** | Single region | 300+ edge locations |
+| **Stats Persistence** | In-memory → periodic DB flush | Durable Objects → periodic D1 flush |
+| **Round-Robin State** | In-process counter | Durable Objects (distributed) |
+| **Cost** | Server/VPS hosting | Cloudflare free tier eligible |
+| **Graceful Shutdown** | Required (`SIGTERM`) | Not needed (stateless) |
+
+### When to Use Which
+
+**Choose Octopus (Go) if you:**
+- Need MySQL or PostgreSQL support
+- Prefer self-hosted / on-premises deployment
+- Want a single binary with embedded UI
+- Need Docker-based orchestration
+
+**Choose Octopus Workers if you:**
+- Want zero-ops serverless deployment
+- Need global edge distribution with low latency
+- Prefer Cloudflare's free tier pricing
+- Want built-in security hardening (SSRF, rate limiting, constant-time auth)
+- Need Embeddings or Volcengine support
+
 ## Inspired By
 
 [Octopus](https://github.com/bestruirui/octopus/) -- the original Go implementation.
