@@ -94,6 +94,53 @@ export async function getGroupById(db: D1Database, id: number): Promise<Group | 
 }
 
 /**
+ * Batch-load GroupItems for multiple group IDs in a single query.
+ */
+async function batchGetGroupItems(
+  db: D1Database,
+  groupIds: number[]
+): Promise<Map<number, GroupItem[]>> {
+  if (groupIds.length === 0) {
+    return new Map();
+  }
+
+  const placeholders = groupIds.map(() => '?').join(',');
+  const itemsResult = await db
+    .prepare(
+      `SELECT id, group_id, channel_id, model_name, priority, weight
+       FROM group_items
+       WHERE group_id IN (${placeholders})
+       ORDER BY group_id ASC, priority ASC, id ASC`
+    )
+    .bind(...groupIds)
+    .all<{
+      id: number;
+      group_id: number;
+      channel_id: number;
+      model_name: string;
+      priority: number;
+      weight: number;
+    }>();
+
+  const itemsMap = new Map<number, GroupItem[]>();
+  for (const item of itemsResult.results || []) {
+    if (!itemsMap.has(item.group_id)) {
+      itemsMap.set(item.group_id, []);
+    }
+    itemsMap.get(item.group_id)?.push({
+      id: item.id,
+      groupId: item.group_id,
+      channelId: item.channel_id,
+      modelName: item.model_name,
+      priority: item.priority,
+      weight: item.weight,
+    });
+  }
+
+  return itemsMap;
+}
+
+/**
  * Helper: fetch a Group and populate its Items
  */
 async function getGroupWithItems(
@@ -161,13 +208,22 @@ export async function getAllGroups(db: D1Database): Promise<Group[]> {
       first_token_time_out: number;
     }>();
 
-  const groups: Group[] = [];
-  for (const groupData of groupsResult.results || []) {
-    const group = await getGroupWithItems(db, groupData);
-    groups.push(group);
+  const groupRows = groupsResult.results || [];
+  if (groupRows.length === 0) {
+    return [];
   }
 
-  return groups;
+  const groupIds = groupRows.map((g) => g.id);
+  const itemsMap = await batchGetGroupItems(db, groupIds);
+
+  return groupRows.map((groupData) => ({
+    id: groupData.id,
+    name: groupData.name,
+    mode: groupData.mode,
+    matchRegex: groupData.match_regex,
+    firstTokenTimeOut: groupData.first_token_time_out,
+    items: itemsMap.get(groupData.id) || [],
+  }));
 }
 
 /**

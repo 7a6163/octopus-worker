@@ -7,13 +7,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: '&#9634;' },
-  { path: '/channels', label: 'Channels', icon: '&#8644;' },
-  { path: '/groups', label: 'Groups', icon: '&#9881;' },
-  { path: '/apikeys', label: 'API Keys', icon: '&#128273;' },
-  { path: '/users', label: 'Users', icon: '&#128100;' },
-  { path: '/settings', label: 'Settings', icon: '&#9881;' },
-  { path: '/model-prices', label: 'Model Prices', icon: '&#36;' },
+  { path: '/', label: 'Dashboard', icon: '\u25A2' },
+  { path: '/channels', label: 'Channels', icon: '\u21C4' },
+  { path: '/groups', label: 'Groups', icon: '\u2699' },
+  { path: '/apikeys', label: 'API Keys', icon: '\uD83D\uDD11' },
+  { path: '/users', label: 'Users', icon: '\uD83D\uDC64' },
+  { path: '/settings', label: 'Settings', icon: '\u2699' },
+  { path: '/model-prices', label: 'Model Prices', icon: '$' },
 ];
 
 interface SidebarProps {
@@ -51,7 +51,7 @@ export function Sidebar({ currentPath, open, onClose }: SidebarProps) {
                 class={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors
                   ${active ? 'bg-blue-600/20 text-blue-300' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
               >
-                <span dangerouslySetInnerHTML={{ __html: item.icon }} />
+                <span>{item.icon}</span>
                 {item.label}
               </a>
             );

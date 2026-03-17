@@ -14,6 +14,7 @@ import { apiKeyAuth } from '@/middleware/auth';
 import { relayRateLimit } from '@/middleware/rate-limit';
 import { requireJson, validateBodySize } from '@/middleware/validate';
 import type { Bindings, Variables } from '@/types';
+import { listGroups } from '@/services/db/group';
 import { relayHandler } from './handler';
 
 const relay = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -67,24 +68,17 @@ relay.post('/embeddings', requireJson(), (c) => {
  * OpenAI Models List (compatibility)
  * GET /v1/models
  */
-relay.get('/models', (c) => {
-  // TODO: Phase 2 read model list from database
+relay.get('/models', async (c) => {
+  const groups = await listGroups(c.env.DB);
+  const models = groups.map((group) => ({
+    id: group.name,
+    object: 'model' as const,
+    owned_by: 'octopus',
+  }));
+
   return c.json({
     object: 'list',
-    data: [
-      {
-        id: 'gpt-4',
-        object: 'model',
-        created: 1686935002,
-        owned_by: 'octopus',
-      },
-      {
-        id: 'claude-3-5-sonnet-20241022',
-        object: 'model',
-        created: 1686935002,
-        owned_by: 'octopus',
-      },
-    ],
+    data: models,
   });
 });
 

@@ -84,11 +84,16 @@ export async function getCachedChannels(
   const result = new Map<number, Channel>();
   const missingIds: number[] = [];
 
-  // 1. Batch read from cache
-  for (const id of ids) {
-    const cacheKey = getCacheKey(id);
-    const cached = await kv.get(cacheKey, 'text');
+  // 1. Batch read from cache (parallel)
+  const cacheEntries = await Promise.all(
+    ids.map(async (id) => {
+      const cacheKey = getCacheKey(id);
+      const cached = await kv.get(cacheKey, 'text');
+      return { id, cacheKey, cached };
+    })
+  );
 
+  for (const { id, cacheKey, cached } of cacheEntries) {
     if (cached !== null && cached !== '__NULL__') {
       try {
         const channel = JSON.parse(cached) as Channel;

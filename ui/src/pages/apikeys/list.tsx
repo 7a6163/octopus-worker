@@ -15,6 +15,7 @@ export function ApiKeyListPage() {
   const [editing, setEditing] = useState<ApiKey | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<ApiKey | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleToggle = async (key: ApiKey, enabled: boolean) => {
     try {
@@ -27,6 +28,7 @@ export function ApiKeyListPage() {
 
   const handleDelete = async () => {
     if (!deleting) return;
+    setDeleteLoading(true);
     try {
       await deleteApiKey(deleting.id);
       toast.success('API key deleted');
@@ -34,6 +36,8 @@ export function ApiKeyListPage() {
       refetch();
     } catch (err) {
       toast.error((err as Error).message);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -96,6 +100,7 @@ export function ApiKeyListPage() {
         onConfirm={handleDelete}
         title="Delete API Key"
         message={`Delete "${deleting?.name}"?`}
+        loading={deleteLoading}
       />
     </div>
   );

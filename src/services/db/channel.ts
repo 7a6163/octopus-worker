@@ -75,13 +75,28 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
     remark: key.remark,
   }));
 
+  // Safely parse JSON fields, defaulting to [] on failure
+  let baseUrls: Channel['baseUrls'] = [];
+  try {
+    baseUrls = JSON.parse(channelResult.base_urls);
+  } catch {
+    console.error(`Channel ${channelResult.id} has invalid base_urls JSON`);
+  }
+
+  let customHeader: Channel['customHeader'] = [];
+  try {
+    customHeader = JSON.parse(channelResult.custom_header);
+  } catch {
+    console.error(`Channel ${channelResult.id} has invalid custom_header JSON`);
+  }
+
   // Assemble the Channel
   const channel: Channel = {
     id: channelResult.id,
     name: channelResult.name,
     type: channelResult.type,
     enabled: channelResult.enabled === 1,
-    baseUrls: JSON.parse(channelResult.base_urls),
+    baseUrls,
     keys,
     model: channelResult.model,
     customModel: channelResult.custom_model,
@@ -89,7 +104,7 @@ export async function getChannel(db: D1Database, id: number): Promise<Channel | 
     autoSync: channelResult.auto_sync === 1,
     autoGroup: channelResult.auto_group,
     matchRegex: channelResult.match_regex,
-    customHeader: JSON.parse(channelResult.custom_header),
+    customHeader,
   };
 
   return channel;
@@ -174,12 +189,26 @@ export async function getChannelsByIds(
   // Assemble Channels Map
   const channelsMap = new Map<number, Channel>();
   for (const ch of channelsResult.results || []) {
+    let baseUrls: Channel['baseUrls'] = [];
+    try {
+      baseUrls = JSON.parse(ch.base_urls);
+    } catch {
+      console.error(`Channel ${ch.id} has invalid base_urls JSON`);
+    }
+
+    let customHeader: Channel['customHeader'] = [];
+    try {
+      customHeader = JSON.parse(ch.custom_header);
+    } catch {
+      console.error(`Channel ${ch.id} has invalid custom_header JSON`);
+    }
+
     channelsMap.set(ch.id, {
       id: ch.id,
       name: ch.name,
       type: ch.type,
       enabled: ch.enabled === 1,
-      baseUrls: JSON.parse(ch.base_urls),
+      baseUrls,
       keys: keysMap.get(ch.id) || [],
       model: ch.model,
       customModel: ch.custom_model,
@@ -187,7 +216,7 @@ export async function getChannelsByIds(
       autoSync: ch.auto_sync === 1,
       autoGroup: ch.auto_group,
       matchRegex: ch.match_regex,
-      customHeader: JSON.parse(ch.custom_header),
+      customHeader,
     });
   }
 

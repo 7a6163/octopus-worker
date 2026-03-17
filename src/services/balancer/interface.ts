@@ -47,7 +47,7 @@ export function getBalancer(mode: GroupMode, env: Bindings): Balancer {
     case GroupMode.Failover:
       return new FailoverBalancer();
     case GroupMode.Weighted:
-      return new WeightedBalancer(env);
+      return new WeightedBalancer();
     default:
       // Default to RoundRobin
       return new RoundRobinBalancer(env);

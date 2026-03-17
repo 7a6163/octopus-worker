@@ -145,7 +145,7 @@ export function isTripped(
 
       if (elapsed >= cooldownMs) {
         // Cooldown expired, transition to HalfOpen
-        entry.state = CircuitState.HalfOpen;
+        globalBreaker.set(key, { ...entry, state: CircuitState.HalfOpen });
         console.log(`circuit breaker [${key}] Open -> HalfOpen (cooldown ${cooldownMs}ms elapsed)`);
         return { tripped: false, remainingMs: 0 };
       }
@@ -178,10 +178,13 @@ export function recordSuccess(channelId: number, keyId: number, modelName: strin
     console.log(`circuit breaker [${key}] HalfOpen -> Closed (probe succeeded)`);
   }
 
-  // Reset all state
-  entry.state = CircuitState.Closed;
-  entry.consecutiveFailures = 0;
-  entry.tripCount = 0;
+  // Reset all state (immutable update)
+  globalBreaker.set(key, {
+    ...entry,
+    state: CircuitState.Closed,
+    consecutiveFailures: 0,
+    tripCount: 0,
+  });
 }
 
 /**
@@ -196,33 +199,50 @@ export function recordFailure(
   const key = circuitKey(channelId, keyId, modelName);
   const entry = getOrCreateEntry(key);
 
-  entry.lastFailureTime = Date.now();
+  const now = Date.now();
 
   switch (entry.state) {
     case CircuitState.Closed: {
-      entry.consecutiveFailures++;
-      if (entry.consecutiveFailures >= settings.threshold) {
-        entry.state = CircuitState.Open;
-        entry.tripCount++;
-        const cooldownMs = getCooldownMs(entry.tripCount, settings);
+      const newFailures = entry.consecutiveFailures + 1;
+      if (newFailures >= settings.threshold) {
+        const newTripCount = entry.tripCount + 1;
+        const cooldownMs = getCooldownMs(newTripCount, settings);
+        globalBreaker.set(key, {
+          ...entry,
+          state: CircuitState.Open,
+          consecutiveFailures: newFailures,
+          lastFailureTime: now,
+          tripCount: newTripCount,
+        });
         console.warn(
           `circuit breaker [${key}] Closed -> Open ` +
-            `(failures=${entry.consecutiveFailures} >= threshold=${settings.threshold}, ` +
-            `tripCount=${entry.tripCount}, cooldown=${cooldownMs}ms)`
+            `(failures=${newFailures} >= threshold=${settings.threshold}, ` +
+            `tripCount=${newTripCount}, cooldown=${cooldownMs}ms)`
         );
+      } else {
+        globalBreaker.set(key, {
+          ...entry,
+          consecutiveFailures: newFailures,
+          lastFailureTime: now,
+        });
       }
       break;
     }
 
     case CircuitState.HalfOpen: {
       // Probe failed, re-enter Open state, increment tripCount (doubles cooldown)
-      entry.state = CircuitState.Open;
-      entry.tripCount++;
-      entry.consecutiveFailures = 0; // Reset failure count
-      const cooldownMs = getCooldownMs(entry.tripCount, settings);
+      const newTripCount = entry.tripCount + 1;
+      const cooldownMs = getCooldownMs(newTripCount, settings);
+      globalBreaker.set(key, {
+        ...entry,
+        state: CircuitState.Open,
+        consecutiveFailures: 0,
+        lastFailureTime: now,
+        tripCount: newTripCount,
+      });
       console.warn(
         `circuit breaker [${key}] HalfOpen -> Open ` +
-          `(probe failed, tripCount=${entry.tripCount}, cooldown=${cooldownMs}ms)`
+          `(probe failed, tripCount=${newTripCount}, cooldown=${cooldownMs}ms)`
       );
       break;
     }
@@ -230,6 +250,7 @@ export function recordFailure(
     case CircuitState.Open:
       // In theory, failures should not be recorded in Open state (requests should be rejected),
       // but we update the failure time as a safety measure
+      globalBreaker.set(key, { ...entry, lastFailureTime: now });
       break;
   }
 }

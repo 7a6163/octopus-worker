@@ -13,6 +13,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
       <div class="flex items-center gap-4">
         <button
           onClick={onMenuClick}
+          aria-label="Open menu"
           class="text-slate-400 hover:text-slate-200 lg:hidden cursor-pointer"
         >
           &#9776;

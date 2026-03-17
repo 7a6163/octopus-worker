@@ -17,6 +17,7 @@ export function ChannelListPage() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Channel | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleToggle = async (ch: Channel, enabled: boolean) => {
     try {
@@ -29,6 +30,7 @@ export function ChannelListPage() {
 
   const handleDelete = async () => {
     if (!deleting) return;
+    setDeleteLoading(true);
     try {
       await deleteChannel(deleting.id);
       toast.success('Channel deleted');
@@ -36,6 +38,8 @@ export function ChannelListPage() {
       refetch();
     } catch (err) {
       toast.error((err as Error).message);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -121,6 +125,7 @@ export function ChannelListPage() {
         onConfirm={handleDelete}
         title="Delete Channel"
         message={`Delete "${deleting?.name}"? This also removes associated keys and group items.`}
+        loading={deleteLoading}
       />
     </div>
   );

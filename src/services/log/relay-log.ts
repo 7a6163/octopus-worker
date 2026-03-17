@@ -165,6 +165,6 @@ export async function cleanupOldLogs(db: D1Database, keepDays: number): Promise<
     return deletedCount;
   } catch (err) {
     console.error('Failed to cleanup old logs:', err);
-    return 0;
+    throw err;
   }
 }

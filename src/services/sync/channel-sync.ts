@@ -159,8 +159,9 @@ async function fetchAnthropicModels(
 ): Promise<readonly string[]> {
   const models: string[] = [];
   let afterId: string | undefined;
+  const MAX_PAGES = 100;
 
-  for (;;) {
+  for (let page = 0; page < MAX_PAGES; page++) {
     const url = new URL(`${baseUrl}/models`);
     url.searchParams.set('limit', '100');
     if (afterId) {
@@ -199,6 +200,10 @@ async function fetchAnthropicModels(
     if (!afterId) {
       break;
     }
+  }
+
+  if (models.length > 0 && afterId) {
+    console.warn(`Anthropic model pagination reached max pages limit (${MAX_PAGES})`);
   }
 
   return models;

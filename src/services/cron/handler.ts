@@ -7,6 +7,7 @@
  * - Every day: clean up expired logs
  */
 
+import { getNumberSetting } from '@/services/db/settings';
 import { cleanupOldLogs } from '@/services/log/relay-log';
 import { syncChannelModels } from '@/services/sync/channel-sync';
 import { syncModelPricing } from '@/services/sync/price-sync';
@@ -91,7 +92,7 @@ async function runHourlySync(env: Bindings): Promise<void> {
 async function cleanupLogs(env: Bindings): Promise<void> {
   try {
     // Read retention period from settings (default 7 days)
-    const keepDays = 7; // TODO: read from settings
+    const keepDays = await getNumberSetting(env.DB, 'relay_log_keep_period', 7);
 
     const deletedCount = await cleanupOldLogs(env.DB, keepDays);
     console.log(`Cleaned up ${deletedCount} old logs`);

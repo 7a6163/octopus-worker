@@ -54,6 +54,16 @@ function ProtectedPage({ title, path, children }: ProtectedPageProps) {
   );
 }
 
+function NotFoundPage() {
+  return (
+    <div class="flex min-h-screen flex-col items-center justify-center text-slate-400">
+      <h1 class="text-4xl font-bold text-slate-100 mb-2">404</h1>
+      <p class="mb-4">Page Not Found</p>
+      <a href="/" class="text-blue-400 hover:text-blue-300 underline">Back to Dashboard</a>
+    </div>
+  );
+}
+
 export function App() {
   const auth = useAuthProvider();
   const toastState = useToastProvider();
@@ -84,6 +94,7 @@ export function App() {
           <ProtectedPage path="/model-prices" title="Model Prices">
             <ModelPricesPage />
           </ProtectedPage>
+          <Route default component={NotFoundPage} />
         </Router>
         <ToastContainer toasts={toastState.toasts} onRemove={toastState.remove} />
       </ToastContext.Provider>

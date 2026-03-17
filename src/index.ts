@@ -63,18 +63,7 @@ app.get('/health', (c) => {
 app.get('/', (c) => {
   return c.json({
     name: 'Octopus Workers',
-    description: 'LLM API Aggregation & Load Balancing Service',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      relay: {
-        openai_chat: '/v1/chat/completions',
-        openai_response: '/v1/responses',
-        anthropic: '/v1/messages',
-        openai_embedding: '/v1/embeddings',
-      },
-      admin: '/api/v1/*',
-    },
+    version: '1.1.0',
   });
 });
 
@@ -108,12 +97,12 @@ app.notFound((c) => {
 // ==================== Error Handler ====================
 
 app.onError((err, c) => {
-  console.error('Error:', err);
+  console.error('Unhandled error:', err);
 
   return c.json(
     {
       error: {
-        message: err.message || 'Internal Server Error',
+        message: 'Internal Server Error',
         type: 'internal_server_error',
       },
     },

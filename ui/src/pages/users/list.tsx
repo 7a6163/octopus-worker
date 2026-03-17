@@ -14,9 +14,11 @@ export function UserListPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<User | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleDelete = async () => {
     if (!deleting) return;
+    setDeleteLoading(true);
     try {
       await deleteUser(deleting.id);
       toast.success('User deleted');
@@ -24,6 +26,8 @@ export function UserListPage() {
       refetch();
     } catch (err) {
       toast.error((err as Error).message);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -75,6 +79,7 @@ export function UserListPage() {
         onConfirm={handleDelete}
         title="Delete User"
         message={`Delete user "${deleting?.username}"?`}
+        loading={deleteLoading}
       />
     </div>
   );

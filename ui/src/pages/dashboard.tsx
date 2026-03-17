@@ -15,6 +15,10 @@ export function DashboardPage() {
     return <p class="text-slate-400">Loading...</p>;
   }
 
+  if (today.error) {
+    return <p class="text-red-400">Failed to load dashboard: {today.error}</p>;
+  }
+
   const stats = today.data;
 
   return (
@@ -34,37 +38,43 @@ export function DashboardPage() {
         />
       </div>
 
-      {hourly.data && <HourlyChart data={hourly.data} />}
+      {hourly.error
+        ? <p class="text-red-400 text-sm">Failed to load hourly data: {hourly.error}</p>
+        : hourly.data && <HourlyChart data={hourly.data} />}
 
       <div class="grid lg:grid-cols-2 gap-6">
-        {channels.data && (
-          <div>
-            <h3 class="text-sm font-medium text-slate-400 mb-3">Channel Usage</h3>
-            <Table
-              columns={[
-                { key: 'channelName', header: 'Channel' },
-                { key: 'totalRequests', header: 'Requests', render: (r) => formatNumber(r.totalRequests) },
-                { key: 'totalCost', header: 'Cost', render: (r) => formatCost(r.totalCost) },
-              ]}
-              data={channels.data}
-              keyFn={(r) => r.channelId}
-            />
-          </div>
-        )}
-        {apikeys.data && (
-          <div>
-            <h3 class="text-sm font-medium text-slate-400 mb-3">API Key Usage</h3>
-            <Table
-              columns={[
-                { key: 'apiKeyName', header: 'API Key' },
-                { key: 'requestSuccess', header: 'Requests', render: (r) => formatNumber(r.requestSuccess + r.requestFailed) },
-                { key: 'inputCost', header: 'Cost', render: (r) => formatCost(r.inputCost + r.outputCost) },
-              ]}
-              data={apikeys.data}
-              keyFn={(r) => r.apiKeyId}
-            />
-          </div>
-        )}
+        <div>
+          <h3 class="text-sm font-medium text-slate-400 mb-3">Channel Usage</h3>
+          {channels.error
+            ? <p class="text-red-400 text-sm">Failed to load channel stats: {channels.error}</p>
+            : channels.data && (
+              <Table
+                columns={[
+                  { key: 'channelName', header: 'Channel' },
+                  { key: 'totalRequests', header: 'Requests', render: (r) => formatNumber(r.totalRequests) },
+                  { key: 'totalCost', header: 'Cost', render: (r) => formatCost(r.totalCost) },
+                ]}
+                data={channels.data}
+                keyFn={(r) => r.channelId}
+              />
+            )}
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-slate-400 mb-3">API Key Usage</h3>
+          {apikeys.error
+            ? <p class="text-red-400 text-sm">Failed to load API key stats: {apikeys.error}</p>
+            : apikeys.data && (
+              <Table
+                columns={[
+                  { key: 'apiKeyName', header: 'API Key' },
+                  { key: 'requestSuccess', header: 'Requests', render: (r) => formatNumber(r.requestSuccess + r.requestFailed) },
+                  { key: 'inputCost', header: 'Cost', render: (r) => formatCost(r.inputCost + r.outputCost) },
+                ]}
+                data={apikeys.data}
+                keyFn={(r) => r.apiKeyId}
+              />
+            )}
+        </div>
       </div>
     </div>
   );

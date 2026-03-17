@@ -15,9 +15,11 @@ export function GroupListPage() {
   const [editing, setEditing] = useState<Group | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Group | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleDelete = async () => {
     if (!deleting) return;
+    setDeleteLoading(true);
     try {
       await deleteGroup(deleting.id);
       toast.success('Group deleted');
@@ -25,6 +27,8 @@ export function GroupListPage() {
       refetch();
     } catch (err) {
       toast.error((err as Error).message);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -78,6 +82,7 @@ export function GroupListPage() {
         onConfirm={handleDelete}
         title="Delete Group"
         message={`Delete group "${deleting?.name}"?`}
+        loading={deleteLoading}
       />
     </div>
   );

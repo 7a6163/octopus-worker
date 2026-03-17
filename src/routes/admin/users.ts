@@ -21,14 +21,14 @@ const users = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 // Validation schemas
 const createUserSchema = z.object({
   username: z.string().min(3).max(50),
-  password: z.string().min(6).max(100),
+  password: z.string().min(12).max(100),
   role: z.enum(['admin', 'user']),
   enabled: z.boolean().default(true),
 });
 
 const updateUserSchema = z.object({
   username: z.string().min(3).max(50).optional(),
-  password: z.string().min(6).max(100).optional(),
+  password: z.string().min(12).max(100).optional(),
   role: z.enum(['admin', 'user']).optional(),
   enabled: z.boolean().optional(),
 });
